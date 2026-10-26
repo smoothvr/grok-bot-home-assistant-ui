@@ -1,0 +1,28 @@
+{
+  "name": "grok-bot-home-assistant-ui",
+  "version": "1.0.1",
+  "description": "Animated eye UI for a wall-mounted tablet. Local Home Assistant controls for music and lights; questions go to Grok Bot.",
+  "license": "MIT",
+  "author": "stefanvr82 (https://github.com/stefanvr82)",
+  "maintainers": [
+    "stefanvr82 (https://github.com/stefanvr82)"
+  ],
+  "homepage": "https://github.com/stefanvr82/grok-bot-home-assistant-ui",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stefanvr82/grok-bot-home-assistant-ui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stefanvr82/grok-bot-home-assistant-ui/issues"
+  },
+  "type": "module",
+  "devDependencies": {
+    "acorn": "^8.15.0",
+    "esbuild": "^0.25.11"
+  },
+  "scripts": {
+    "start": "python3 -m http.server 8000 -d web",
+    "build": "node scripts/build-legacy.mjs",
+    "test": "npm run build && node web/test_paritaet.mjs && node web/test_ha.mjs && node web/test_i18n.mjs && node web/test_legacy.mjs && node web/test_round.mjs"
+  }
+}

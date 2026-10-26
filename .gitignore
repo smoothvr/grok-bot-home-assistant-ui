@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+*.local.json
+config.local.json
+web/config.local.json
+flur-*
+*-draft.md

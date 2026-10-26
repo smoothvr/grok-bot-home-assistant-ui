@@ -1,0 +1,25 @@
+name: Bug report
+description: Something in the tablet UI does not behave as described
+title: "bug: "
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: Browser or tablet, language, and whether Home Assistant was connected. Do not include tokens, local addresses, or account details.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: How to see it again.
+    validations:
+      required: true
