@@ -70,13 +70,3 @@ export function tippFenster(zeiten, now, fenster) {
 export function eckeHinweisFaellig(gesehen, tipps) {
   return !gesehen && tipps >= 2;
 }
-
-// Idle stays faint. A chirp adds a little, a loud phrase adds more. Angry is handled apart, at full red.
-export function randPegel(art, puls, atem) {
-  const u = Math.max(0, Math.min(1, Number(atem) || 0));
-  const p = Math.max(0, Math.min(1, Number(puls) || 0));
-  if (art === 'angry') return 1;
-  if (art === 'schlafen') return 0.04 + u * 0.05;
-  if (art === 'idle') return Math.min(0.85, 0.06 + u * 0.07 + p * 0.7);
-  return Math.min(0.9, 0.12 + u * 0.06 + p * 0.72);
-}

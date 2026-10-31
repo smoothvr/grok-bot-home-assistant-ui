@@ -1050,7 +1050,7 @@
     ecken: normEcken(ECKEN_VORGABE),
     gestenStand: 2,
     eckGroesse: ECK,
-    lichtProfil: "lebhaft",
+    lichtProfil: "ruhig",
     alarmStaerke: "stark",
     dash: normDash(null),
     eigene: [],
@@ -1431,7 +1431,7 @@
   }
 
   // web/version.js
-  var VERSION = "2.2.0";
+  var VERSION = "2.2.1";
 
   // web/reaktionen.js
   var REAKTION_IDS = [

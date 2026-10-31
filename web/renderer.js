@@ -145,9 +145,9 @@ export class Buehne {
     if (o.zustand) this.lichtZustand = o.zustand;
     if ('rgb' in o) this.lichtRgb = o.rgb && o.rgb.length ? o.rgb : null;
     if ('alarmStark' in o) this.alarmStark = o.alarmStark !== false;
-    if ('pegel' in o) {
-      const n = Number(o.pegel);
-      this.lichtPegel = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    if ('huelle' in o) {
+      const n = Number(o.huelle);
+      this.lichtHuelle = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
     }
   }
 
@@ -179,13 +179,12 @@ export class Buehne {
     const st = name || 'idle';
     if (this.lichtProfil === 'lebhaft') lebhaftSet(this.lichtMaschine, st, now, rgb);
     else ruhigSet(this.lichtMaschine, st, now, rgb);
+    this.lichtMaschine.huelle = this.lichtHuelle > 0 ? this.lichtHuelle : 0;
     const frameFn = this.lichtProfil === 'lebhaft' ? lebhaftFrame : ruhigFrame;
     frameFn(this.lichtCtx, this.lichtFeld, this.lichtMaschine, now, this.lichtT);
     const ctx = this.ctx;
-    const pegel = this.lichtPegel == null ? 1 : this.lichtPegel;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = pegel;
     ctx.drawImage(this.lichtCv, 0, 0, W, H);
     ctx.restore();
   }

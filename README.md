@@ -57,13 +57,13 @@ Phone and tablet keep separate saved profiles in the same browser.
 
 ## The face
 
-One look. The eyes are flat and full-screen on black. There is no square, no cube, and no frame around them. A soft glow follows the screen edge. It stays very low while the face is idle, and it rises with the sound of a reaction, then settles. Red is only for angry. The front door does the same while its contact is open.
+One look. The eyes are flat and full-screen on black. There is no square, no cube, and no frame around them. The edge light is the approved quiet profile: a soft glow along the bottom, breathing slowly between its low and high level. A phrase lifts that level with the sound, inside the same range, then it settles. Thinking and music let the glow rise up the sides. Lively, the moving wave, stays available. Red is the alarm while angry, and the error colour when something fails. The front door holds the alarm while its contact is open.
 
 Sleep is in minutes. `0` keeps the eyes awake. After `dimAfter` seconds of quiet the page dims (30 percent unless you change it). While the eyes are asleep the screen stays dim. A tap wakes them. Presence can wake them only from sleep, and only again after the next sleep.
 
 While idle the eyes saccade, glance to the sides and up, drift slowly, and tilt a little. Blinks come as a single, a double, a slow sleepy blink, or a half blink. A touch draws a look. A few quick pokes turn the face grumpy. A long press, about 0.7 seconds and not in the settings corner, makes it content. Each reaction has a few renditions and does not repeat the same one immediately.
 
-The droid chatter is generated in the browser: short beeps and chirps, a little different every time, with a cooldown so a hallway does not get a stream of noise. The four wake hums are unchanged. Red light is still only for angry. Other reactions pulse the current edge colour in time with the beeps.
+The droid chatter is generated in the browser: short beeps and chirps, a little different every time, with a cooldown so a hallway does not get a stream of noise. The four wake hums are unchanged. The edge light follows those phrases inside the current colour's approved range.
 
 Settings has a Liveliness slider and a volume slider. Liveliness `0` keeps the gaze rare and skips casual tap reactions. The collapsed Reactions list at the bottom of settings plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the sliders for one visit (`70` or `0.7` both work).
 

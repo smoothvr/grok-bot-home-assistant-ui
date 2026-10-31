@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-10-31
+
+### Fixed
+
+- The edge light follows the approved quiet field again. 2.2 had been scaling the finished glow down after it was drawn, so idle sat far below the profile. Quiet is the standard. Lively stays selectable. Sleep uses the profile's own levels. There is no extra dimmer and no grain.
+- A droid phrase, including listening, speaking, and music, moves the level inside that state's low-to-high range and eases there over 0.12 seconds. The slow side-to-side drift is unchanged. Red is the alarm while angry, and the error colour while something failed.
+
 ## [2.2.0] - 2026-10-31
 
 ### Changed

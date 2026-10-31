@@ -82,7 +82,7 @@ assert(tuerKante(null, 'on') === false && tuerKante('off', 'on') === true && tue
   assert(k.eckGroesse === 120, 'file corner size');
   assert(k.dash.coldC === 2 && k.dash.waste.includes('calendar.waste') && k.dash.indoor[0] === 'sensor.kitchen_temperature', 'file dashboard');
   assert(k.dash.weather === 'weather.home', 'omitted dashboard fields keep the default');
-  assert(k.lichtProfil === 'lebhaft', 'lively light is the default');
+  assert(k.lichtProfil === 'ruhig', 'quiet light is the default');
   speichereKonfig({ ...k, haUrl: 'ws://saved.local/api/websocket', haToken: 'bleibt-gespeichert', lang: 'en', modus: 'led' }, leer);
   const danach = ladeKonfig('lang=de', leer, { haUrl: 'http://file.local:8123', haToken: 'datei-token', theme: 'cute', lang: 'en' });
   assert(danach.haUrl === 'ws://file.local:8123/api/websocket', 'file address overrides the save');
@@ -125,7 +125,7 @@ assert(siteNachKonfig({ haToken: 'x', theme: 'fortune' }).haToken === 'x', 'site
 assert(siteNachKonfig({ token: 'alias-token' }).haToken === 'alias-token', 'a token alias becomes haToken');
 assert(siteNachKonfig({ access_token: 'drop-me' }).haToken == null, 'access_token is dropped');
 assert(siteNachKonfig({ licht_profil: 'lebhaft' }).lichtProfil === 'lebhaft', 'a file can select the lively light');
-assert(VORGABE.lichtProfil === 'lebhaft', 'the shipped light profile is lively');
+assert(VORGABE.lichtProfil === 'ruhig', 'the shipped light profile is quiet');
 assert(bereit('energy', { dash: normDash(null), states: {} }) === false, 'energy stays hidden without a pv entity');
 assert(bereit('day', { dash: normDash(null), states: {} }) === true, 'my day is always in the stack');
 assert(bereit('music', { dash: normDash(null), states: {}, scriptMusikAn: 'script.eye_music_on' }) === true, 'music stays when a script is set');

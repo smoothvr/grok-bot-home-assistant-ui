@@ -2345,7 +2345,7 @@
     ecken: normEcken(ECKEN_VORGABE),
     gestenStand: 2,
     eckGroesse: ECK,
-    lichtProfil: "lebhaft",
+    lichtProfil: "ruhig",
     alarmStaerke: "stark",
     dash: normDash(null),
     eigene: [],
@@ -3723,11 +3723,26 @@
     return { w, h, scale: s, rahmen: rahmenC, streifen };
   }
   var G_PNORM = GEO.PNORM;
-  STATES.schlafen.rgb = [96, 40, 10];
-  STATES.schlafen.gain = 1.2;
-  RUHIG_STATES.schlafen.lo = 0.42;
-  RUHIG_STATES.schlafen.hi = 0.56;
-  RUHIG_STATES.schlafen.rahmen = [0.045, 0.08];
+  function pegelAusHuelle(st, huelle, profil) {
+    var tab = profil === "lebhaft" ? STATES : RUHIG_STATES;
+    var R = tab[st] || tab.idle || RUHIG_STATES.idle;
+    var u = Number(huelle);
+    if (!(u > 0)) u = 0;
+    if (u > 1) u = 1;
+    return R.lo + (R.hi - R.lo) * u;
+  }
+  function glaettePegel(lv, ziel, dt) {
+    var d = Number(dt);
+    if (!(d > 0)) d = 0;
+    return lv + (ziel - lv) * (1 - Math.exp(-d / 0.12));
+  }
+  function zielLvVon(st, pv, t, ue, profil, huelle) {
+    if (huelle > 0) {
+      return pegelAusHuelle(st, huelle, profil) * ue + pegelAusHuelle(pv, huelle, profil) * (1 - ue);
+    }
+    if (profil === "lebhaft") return level(st, t) * ue + level(pv, t) * (1 - ue);
+    return levelRuhig(st, t) * ue + levelRuhig(pv, t) * (1 - ue);
+  }
   function keyOf(st) {
     return RUHIG_STATES[st] ? st : "idle";
   }
@@ -3758,7 +3773,10 @@
     var target = RUHIG_STATES[st].modus === "lang" ? 1 : 0, step = dt / RUHIG.T_MODUS;
     S.wl = S.wl < target ? Math.min(target, S.wl + step) : Math.max(target, S.wl - step);
     var wlE = sst2(0, 1, S.wl);
-    var lv = levelRuhig(st, t) * ue + levelRuhig(pv, t) * (1 - ue), ra = rahmenRuhig(st, t) * ue + rahmenRuhig(pv, t) * (1 - ue);
+    var zielLv = zielLvVon(st, pv, t, ue, "ruhig", S.huelle);
+    if (typeof S.lv !== "number") S.lv = zielLv;
+    S.lv = glaettePegel(S.lv, zielLv, dt);
+    var lv = S.lv, ra = rahmenRuhig(st, t) * ue + rahmenRuhig(pv, t) * (1 - ue);
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
     ctx.clearRect(0, 0, F.w, F.h);
@@ -3801,8 +3819,9 @@
     S.last = now;
     var ue = fixed ? 1 : easeOutCubic(Math.max(0, Math.min(1, (now - S.tState) / 450)));
     var st = S.state, pv = S.prev;
-    var zielLv = level(st, t) * ue + level(pv, t) * (1 - ue);
-    S.lv += (zielLv - S.lv) * (1 - Math.exp(-dt / 0.12));
+    var zielLv = zielLvVon(st, pv, t, ue, "lebhaft", S.huelle);
+    if (typeof S.lv !== "number") S.lv = zielLv;
+    S.lv = glaettePegel(S.lv, zielLv, dt);
     var ziel = zielFarbe(S, st);
     S.col = ue < 1 ? mixLin(S.colFrom, ziel, ue) : ziel;
     var o = Math.min(1, opacity(st, S.lv) * ue + opacity(pv, S.lv) * (1 - ue));
@@ -3928,9 +3947,9 @@
       if (o.zustand) this.lichtZustand = o.zustand;
       if ("rgb" in o) this.lichtRgb = o.rgb && o.rgb.length ? o.rgb : null;
       if ("alarmStark" in o) this.alarmStark = o.alarmStark !== false;
-      if ("pegel" in o) {
-        const n = Number(o.pegel);
-        this.lichtPegel = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+      if ("huelle" in o) {
+        const n = Number(o.huelle);
+        this.lichtHuelle = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
       }
     }
     // Screen-edge light under the eyes. Bold only flashes it while a tap is acknowledged.
@@ -3961,13 +3980,12 @@
       const st = name || "idle";
       if (this.lichtProfil === "lebhaft") lebhaftSet(this.lichtMaschine, st, now, rgb);
       else ruhigSet(this.lichtMaschine, st, now, rgb);
+      this.lichtMaschine.huelle = this.lichtHuelle > 0 ? this.lichtHuelle : 0;
       const frameFn = this.lichtProfil === "lebhaft" ? lebhaftFrame : ruhigFrame;
       frameFn(this.lichtCtx, this.lichtFeld, this.lichtMaschine, now, this.lichtT);
       const ctx = this.ctx;
-      const pegel = this.lichtPegel == null ? 1 : this.lichtPegel;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = pegel;
       ctx.drawImage(this.lichtCv, 0, 0, W, H);
       ctx.restore();
     }
@@ -5023,14 +5041,6 @@
   function eckeHinweisFaellig(gesehen, tipps) {
     return !gesehen && tipps >= 2;
   }
-  function randPegel(art, puls, atem) {
-    const u = Math.max(0, Math.min(1, Number(atem) || 0));
-    const p = Math.max(0, Math.min(1, Number(puls) || 0));
-    if (art === "angry") return 1;
-    if (art === "schlafen") return 0.04 + u * 0.05;
-    if (art === "idle") return Math.min(0.85, 0.06 + u * 0.07 + p * 0.7);
-    return Math.min(0.9, 0.12 + u * 0.06 + p * 0.72);
-  }
 
   // web/app.js
   function __legacyBoot() {
@@ -5317,6 +5327,17 @@
           spieleReaktion("sleepy", { ton: true, erzwingen: true, staerke: 0.62, gain: 0.7 });
           tonFuer(kurz, 0.28);
         } else if (ton) tonFuer(kurz);
+        if (kurz === "zuhoeren" || kurz === "sprechen" || kurz === "musik_an") {
+          const phraseId = kurz === "zuhoeren" ? "curious" : kurz === "musik_an" ? "happy" : "content";
+          const phrase = bauePhrase(phraseId, Math.random, null);
+          const start = performance.now();
+          const pulses = [];
+          for (let i = 0; i < phrase.notes.length; i++) {
+            const n = phrase.notes[i];
+            pulses.push({ at: start + n.at * 1e3, ms: Math.max(80, n.dur * 1e3), amp: 0.45 + Math.min(0.4, n.gain) });
+          }
+          merkePulse(pulses);
+        }
         zeichneCaption();
         syncDemoTrack();
         return true;
@@ -5724,14 +5745,12 @@
         else if (hinweis.offen || now < wachBis) lichtKurz = "verstanden";
         const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== "normal" });
         const puls = pulsHuelle(now, scheinPulse);
-        const atem = 0.5 + 0.5 * Math.sin(now / 1e4);
-        const lichtArt = tuerAuf || bildKurz === "angry" ? "angry" : modus === "schlafwahl" || bildKurz === "schlafen" ? "schlafen" : bildKurz === "idle" ? "idle" : bildKurz;
         renderer.setLicht({
-          profil: "ruhig",
+          profil: konfig.lichtProfil === "lebhaft" ? "lebhaft" : "ruhig",
           zustand: befehl.name,
           rgb: befehl.rgb,
           alarmStark: konfig.alarmStaerke !== "normal",
-          pegel: randPegel(lichtArt, puls, atem)
+          huelle: puls
         });
         const ring = befehl.alarm ? [befehl.rgb, 1, null, "angry"] : augen.ring || [[255, 106, 0], 0.2, null];
         renderer.render(pose, ring);

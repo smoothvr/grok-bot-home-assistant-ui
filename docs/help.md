@@ -6,7 +6,7 @@ Help for the wall tablet. Settings are a separate page. The face itself stays cl
 
 The page is German or English. It follows the browser language until a saved choice, `config.local.json`, or `?lang=` overrides it.
 
-There is one look. The eyes are flat on black, full-screen. There is no cube and no frame around them. A soft glow follows the screen edge. Idle is a very slow, low breath. A reaction lifts it with the sound, then it settles. Red is only for angry. Cube, Fortune, and Bold are not switched in this release.
+There is one look. The eyes are flat on black, full-screen. There is no cube and no frame around them. The edge light is the approved quiet profile: a slow breath along the bottom edge, between that state's low and high level. A phrase lifts the level with the sound and eases back. Thinking and music use the long profile, up the sides. Red is the alarm while angry, and the error colour when something fails. Cube, Fortune, and Bold are not switched in this release.
 
 Sleep is in minutes. `0` keeps the eyes awake. The page dims to 30 percent after 60 seconds of quiet (`dimAfter`, `dimLevel`). While the eyes sleep, the screen stays dim and the bottom line reads “Zzzzzz...”. The clock is off unless you turn it on. It sits clear of the corner you hold for settings. iOS draws the status bar itself. This page cannot hide that bar in Safari or on the iOS 10 home screen.
 

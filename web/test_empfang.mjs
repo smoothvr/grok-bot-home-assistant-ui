@@ -3,8 +3,9 @@
 import { translate } from './strings.js';
 import { DEMO_HOST } from './konfig.js';
 import {
-  EMPFANG_REIHE, INTRO_KEYS, eckeHinweisFaellig, empfangSchritt, ohneHaus, randPegel, sollWillkommen, tippFenster,
+  EMPFANG_REIHE, INTRO_KEYS, eckeHinweisFaellig, empfangSchritt, ohneHaus, sollWillkommen, tippFenster,
 } from './empfang.js';
+import { glaettePegel, pegelAusHuelle } from './licht.js';
 
 let fehler = 0;
 function assert(cond, msg) {
@@ -76,11 +77,17 @@ assert(translate('en', 'welcome.demo') === 'Start the demo' && translate('en', '
 assert(eckeHinweisFaellig(false, 1) === false && eckeHinweisFaellig(false, 2) === true, 'the corner hint waits for a second touch');
 assert(eckeHinweisFaellig(true, 5) === false, 'the corner hint is once');
 
-assert(randPegel('idle', 0, 0) < 0.12, 'idle glow is nearly off');
-assert(randPegel('idle', 0.25, 0.2) < randPegel('idle', 1, 0.2), 'a louder phrase lights the edge more');
-assert(randPegel('idle', 1, 1) < 0.9, 'a pulse stays under the alarm');
-assert(randPegel('schlafen', 0, 0.5) < 0.12, 'sleep breathes faintly');
-assert(randPegel('angry', 0, 0) === 1, 'angry is not dimmed by the calm scale');
+assert(Math.abs(pegelAusHuelle('idle', 0, 'ruhig') - 0.32) < 1e-9, 'a quiet idle envelope sits at the low end');
+assert(Math.abs(pegelAusHuelle('idle', 1, 'ruhig') - 0.42) < 1e-9, 'a full idle envelope stays inside the high end');
+assert(pegelAusHuelle('idle', 0.25, 'ruhig') < pegelAusHuelle('idle', 1, 'ruhig'), 'a louder phrase lifts the level');
+assert(pegelAusHuelle('idle', 4, 'ruhig') === pegelAusHuelle('idle', 1, 'ruhig'), 'the envelope does not leave the state');
+assert(Math.abs(pegelAusHuelle('schlafen', 0, 'ruhig') - 0.26) < 1e-9, 'sleep uses the approved low level');
+assert(Math.abs(pegelAusHuelle('fehler', 1, 'ruhig') - 0.85) < 1e-9, 'an error can reach its own red high level');
+{
+  const halb = glaettePegel(0.32, 0.42, 0.12);
+  assert(halb > 0.32 && halb < 0.42, 'the level eases toward the phrase');
+  assert(glaettePegel(0.32, 0.42, 0) === 0.32, 'no time means no jump');
+}
 
 if (fehler) {
   console.error(`${fehler} checks failed`);

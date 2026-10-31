@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// Living edge light. Lively is the shipped profile. Quiet is the other one.
-// Sleep is a little brighter than that reference so it still reads on a wall.
+// Living edge light. Quiet (D) is the standard profile. Lively (B) stays selectable.
+// Levels, colours, and the slow side-to-side drift are the approved field. No grain.
 // ES2015, läuft in Safari 10.1 (iPad 4) und aktuellem iOS/Chrome. Keine Abhängigkeiten.
 // Grundidee: EIN Lichtfeld entlang des ganzen Bildschirmrands. Jeder Punkt hat
 //   d = Abstand zum Rand (p-Norm, ohne Diagonalknick) und s = Position entlang des Umfangs (0..1, ab unten Mitte, im Uhrzeigersinn).
@@ -255,12 +255,28 @@
   }
   // Zustandsmaschine D. S = ruhigStart(state); ruhigSet(S, st, nowMs); ruhigFrame(ctx, F, S, nowMs, tFix)
   var G_PNORM = GEO.PNORM;
-  // Sleep was too faint on a wall. A little more colour and opacity, still calm.
-  STATES.schlafen.rgb = [96, 40, 10];
-  STATES.schlafen.gain = 1.2;
-  RUHIG_STATES.schlafen.lo = 0.42;
-  RUHIG_STATES.schlafen.hi = 0.56;
-  RUHIG_STATES.schlafen.rahmen = [0.045, 0.08];
+
+  // A voice envelope (0..1) maps into that state's lo..hi. It does not change the drift.
+  function pegelAusHuelle(st, huelle, profil) {
+    var tab = profil === 'lebhaft' ? STATES : RUHIG_STATES;
+    var R = tab[st] || tab.idle || RUHIG_STATES.idle;
+    var u = Number(huelle);
+    if (!(u > 0)) u = 0;
+    if (u > 1) u = 1;
+    return R.lo + (R.hi - R.lo) * u;
+  }
+  function glaettePegel(lv, ziel, dt) {
+    var d = Number(dt);
+    if (!(d > 0)) d = 0;
+    return lv + (ziel - lv) * (1 - Math.exp(-d / 0.12));
+  }
+  function zielLvVon(st, pv, t, ue, profil, huelle) {
+    if (huelle > 0) {
+      return pegelAusHuelle(st, huelle, profil) * ue + pegelAusHuelle(pv, huelle, profil) * (1 - ue);
+    }
+    if (profil === 'lebhaft') return level(st, t) * ue + level(pv, t) * (1 - ue);
+    return levelRuhig(st, t) * ue + levelRuhig(pv, t) * (1 - ue);
+  }
 
   function keyOf(st) { return RUHIG_STATES[st] ? st : 'idle'; }
   function ruhigStart(st) {
@@ -287,7 +303,10 @@
     var target = RUHIG_STATES[st].modus === 'lang' ? 1 : 0, step = dt / RUHIG.T_MODUS;
     S.wl = S.wl < target ? Math.min(target, S.wl + step) : Math.max(target, S.wl - step);
     var wlE = sst(0, 1, S.wl);
-    var lv = levelRuhig(st, t) * ue + levelRuhig(pv, t) * (1 - ue), ra = rahmenRuhig(st, t) * ue + rahmenRuhig(pv, t) * (1 - ue);
+    var zielLv = zielLvVon(st, pv, t, ue, 'ruhig', S.huelle);
+    if (typeof S.lv !== 'number') S.lv = zielLv;
+    S.lv = glaettePegel(S.lv, zielLv, dt);
+    var lv = S.lv, ra = rahmenRuhig(st, t) * ue + rahmenRuhig(pv, t) * (1 - ue);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.clearRect(0, 0, F.w, F.h);
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(1, ra * gain); ctx.drawImage(F.rahmen, 0, 0);
@@ -312,8 +331,9 @@
     var fixed = tFix !== undefined && tFix !== null, t = fixed ? tFix : now / 1000, dt = fixed ? 0.016 : Math.min(0.1, Math.max(0, (now - S.last) / 1000)); S.last = now;
     var ue = fixed ? 1 : easeOutCubic(Math.max(0, Math.min(1, (now - S.tState) / 450)));
     var st = S.state, pv = S.prev;
-    var zielLv = level(st, t) * ue + level(pv, t) * (1 - ue);
-    S.lv += (zielLv - S.lv) * (1 - Math.exp(-dt / 0.12));
+    var zielLv = zielLvVon(st, pv, t, ue, 'lebhaft', S.huelle);
+    if (typeof S.lv !== 'number') S.lv = zielLv;
+    S.lv = glaettePegel(S.lv, zielLv, dt);
     var ziel = zielFarbe(S, st);
     S.col = ue < 1 ? mixLin(S.colFrom, ziel, ue) : ziel;
     var o = Math.min(1, opacity(st, S.lv) * ue + opacity(pv, S.lv) * (1 - ue));
@@ -369,4 +389,5 @@ export {
   RUHIG, RUHIG_STATES, buildRuhig, ruhigStart, ruhigSet, ruhigFrame, levelRuhig, shiftRuhig, rahmenRuhig,
   lebhaftStart, lebhaftSet, lebhaftFrame, sst, easeOutCubic, edgeDist, perimS,
   lichtZustandVon, lichtBefehl, ALARM_STARK, ALARM_NORMAL,
+  pegelAusHuelle, glaettePegel,
 };

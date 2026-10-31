@@ -91,7 +91,7 @@ export const VORGABE = {
   ecken: normEcken(ECKEN_VORGABE),
   gestenStand: 2,
   eckGroesse: ECK,
-  lichtProfil: 'lebhaft',
+  lichtProfil: 'ruhig',
   alarmStaerke: 'stark',
   dash: normDash(null),
   eigene: [],

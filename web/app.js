@@ -25,9 +25,9 @@ import { blickZumPunkt } from './blick.js';
 import {
   ACK_POOL, FEHLER_POOL, HINWEIS_POOL, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
 } from './reaktionen.js';
-import { createStimme, pulsHuelle } from './stimme.js';
+import { createStimme, pulsHuelle, bauePhrase } from './stimme.js';
 import {
-  INTRO_KEYS, INTRO_MS, eckeHinweisFaellig, empfangSchritt, ohneHaus, randPegel, sollWillkommen, tippFenster,
+  INTRO_KEYS, INTRO_MS, eckeHinweisFaellig, empfangSchritt, ohneHaus, sollWillkommen, tippFenster,
 } from './empfang.js';
 
 const q = new URLSearchParams(location.search);
@@ -317,6 +317,17 @@ function wendeZustand(roh, opt) {
     spieleReaktion('sleepy', { ton: true, erzwingen: true, staerke: 0.62, gain: 0.7 });
     tonFuer(kurz, 0.28);
   } else if (ton) tonFuer(kurz);
+  if (kurz === 'zuhoeren' || kurz === 'sprechen' || kurz === 'musik_an') {
+    const phraseId = kurz === 'zuhoeren' ? 'curious' : (kurz === 'musik_an' ? 'happy' : 'content');
+    const phrase = bauePhrase(phraseId, Math.random, null);
+    const start = performance.now();
+    const pulses = [];
+    for (let i = 0; i < phrase.notes.length; i++) {
+      const n = phrase.notes[i];
+      pulses.push({ at: start + n.at * 1000, ms: Math.max(80, n.dur * 1000), amp: 0.45 + Math.min(0.4, n.gain) });
+    }
+    merkePulse(pulses);
+  }
   zeichneCaption();
   syncDemoTrack();
   return true;
@@ -745,14 +756,12 @@ function frame(now) {
   else if (hinweis.offen || now < wachBis) lichtKurz = 'verstanden';
   const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== 'normal' });
   const puls = pulsHuelle(now, scheinPulse);
-  const atem = 0.5 + 0.5 * Math.sin(now / 10000);
-  const lichtArt = (tuerAuf || bildKurz === 'angry') ? 'angry' : (modus === 'schlafwahl' || bildKurz === 'schlafen' ? 'schlafen' : (bildKurz === 'idle' ? 'idle' : bildKurz));
   renderer.setLicht({
-    profil: 'ruhig',
+    profil: konfig.lichtProfil === 'lebhaft' ? 'lebhaft' : 'ruhig',
     zustand: befehl.name,
     rgb: befehl.rgb,
     alarmStark: konfig.alarmStaerke !== 'normal',
-    pegel: randPegel(lichtArt, puls, atem),
+    huelle: puls,
   });
   const ring = befehl.alarm
     ? [befehl.rgb, 1, null, 'angry']
