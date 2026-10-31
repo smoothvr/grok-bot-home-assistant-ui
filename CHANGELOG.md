@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-31
+
+### Changed
+
+- The main screen is only the face: eyes, emotions, the living edge light, and sound. Red light is only for angry. Overview tiles, detail views, the theme switch, and the settings overlay are gone.
+- Settings are a separate page, `settings.html`. The saved token and the Home Assistant address from 1.0.x stay in `eye_ui_config`.
+- The face is served from Home Assistant at `/local/eye-ui/index.html`, with relative asset URLs and an HTML5 application cache manifest. `npm run appcache` writes the version line from `VERSION`.
+- Voice is not part of this release.
+
+### Added
+
+- Presence wake. `presenceEntity` (for example `binary_sensor.living_room_presence`) and `input_select.eye_ui_state` value `wake` open the eyes from sleep, look around, and play one of four short hums. Presence does nothing while the face is already awake.
+- A reminder note from `input_text.eye_hinweis`. It stays until a tap, which calls `script.eye_hinweis_quittieren`. Demo mode shows a stand-in note.
+- A Home Assistant heartbeat every 30 seconds. A missing pong reconnects after 10 seconds. The page also reconnects on `online` and when it becomes visible. `auth_invalid` shows the calm error and tries again every 60 seconds.
+- The first touch unlocks sound. Until then, reactions are light only, with one small hint.
+
+### Fixed
+
+- Connection trouble stays a calm line. The page does not show a raw Home Assistant error.
+
 ## [1.0.1] - 2026-10-26
 
 ### Fixed
@@ -235,18 +255,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The Home Assistant token is stored only in the browser. A token in the page URL is ignored.
 - Settings no longer open on a long hold. A corner hold runs that corner’s own action. Five taps still open settings.
 
-[1.0.1]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/releases/tag/v1.0.0
-[0.4.3-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.4.2-beta...v0.4.3-beta
-[0.4.2-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.4.1-beta...v0.4.2-beta
-[0.4.1-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.4.0-beta...v0.4.1-beta
-[0.4.0-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.3.2-beta...v0.4.0-beta
-[0.3.2-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.3.1-beta...v0.3.2-beta
-[0.3.1-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.3.0-beta...v0.3.1-beta
-[0.3.0-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.2.2-beta...v0.3.0-beta
-[0.2.2-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.2.1-beta...v0.2.2-beta
-[0.2.1-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.2.0-beta...v0.2.1-beta
-[0.2.0-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.1.1-beta...v0.2.0-beta
-[0.1.1-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.1.0-beta...v0.1.1-beta
-[0.1.0-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/compare/v0.0.0-beta...v0.1.0-beta
-[0.0.0-beta]: https://github.com/stefanvr82/grok-bot-home-assistant-ui/releases/tag/v0.0.0-beta
+[2.0.0]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v1.0.1...v2.0.0
+[1.0.1]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/smoothvr/grok-bot-home-assistant-ui/releases/tag/v1.0.0
+[0.4.3-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.4.2-beta...v0.4.3-beta
+[0.4.2-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.4.1-beta...v0.4.2-beta
+[0.4.1-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.4.0-beta...v0.4.1-beta
+[0.4.0-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.3.2-beta...v0.4.0-beta
+[0.3.2-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.3.1-beta...v0.3.2-beta
+[0.3.1-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.3.0-beta...v0.3.1-beta
+[0.3.0-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.2.2-beta...v0.3.0-beta
+[0.2.2-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.2.1-beta...v0.2.2-beta
+[0.2.1-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.2.0-beta...v0.2.1-beta
+[0.2.0-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.1.1-beta...v0.2.0-beta
+[0.1.1-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.1.0-beta...v0.1.1-beta
+[0.1.0-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/compare/v0.0.0-beta...v0.1.0-beta
+[0.0.0-beta]: https://github.com/smoothvr/grok-bot-home-assistant-ui/releases/tag/v0.0.0-beta

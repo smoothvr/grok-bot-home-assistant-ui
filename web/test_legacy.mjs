@@ -62,14 +62,17 @@ const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.ur
 assert(pkg.version === VERSION, 'package version matches the page');
 const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 assert(/iOS 10\.3/.test(readme), 'README names the minimum iOS');
-assert(readme.includes('Voice with an iPhone shortcut'), 'README has the voice section');
-assert(readme.includes('per vendor store pages, Oct 2026'), 'README cites the store-page minimums');
-assert(readme.includes('Voice needs a separate microphone device'), 'voice uses another device');
+assert(readme.includes('Voice is not part of this release'), 'README says voice is not in this release');
 assert(readme.includes('iPad 4') && readme.includes('iOS 10.3.3'), 'eyes stay available from iPad 4');
 const hilfe = fs.readFileSync(new URL('../docs/help.md', import.meta.url), 'utf8');
-assert(hilfe.includes('Voice with an iPhone shortcut'), 'help has the voice section');
-assert(hilfe.includes('per vendor store pages, Oct 2026'), 'help cites the store-page minimums');
-assert(hilfe.includes('script.grok_hallo') && hilfe.includes('script.grok_spiel_musik'), 'help names the shortcut scripts');
+assert(hilfe.includes('Voice is not part of this release'), 'help says voice is not in this release');
+assert(!/asking Grok|Hey Grok|script\.grok_hallo|script\.grok_spiel_musik/i.test(readme + hilfe), 'docs do not claim that asking Grok works');
+const settingsLegacy = fs.readFileSync(new URL('./settings-legacy.js', import.meta.url), 'utf8');
+try {
+  acorn.parse(settingsLegacy, { ecmaVersion: 2015, sourceType: 'script' });
+} catch (err) {
+  assert(false, `settings-legacy.js is not ES2015: ${err.message}`);
+}
 
 if (fehler) {
   console.error(`${fehler} checks failed`);

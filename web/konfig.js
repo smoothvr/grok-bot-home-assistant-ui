@@ -3,7 +3,7 @@
 import { ECKEN_VORGABE, GESTEN_VORGABE, istAltesLayout, normEcken, normEigene, normGesten } from './aktionen.js';
 import { normDash } from './dashboard.js';
 import { ECK } from './gesten.js';
-import { gueltigeEntity, normalisiereHaUrl } from './ha.js';
+import { dienstAus, gueltigeEntity, normalisiereHaUrl } from './ha.js';
 import { KURZ } from './namen.js';
 import { localeCode } from './strings.js';
 
@@ -73,6 +73,9 @@ export const VORGABE = {
   dimStufe: 0.3,
   dimVorMinuten: 15,
   tuer: '',
+  presenceEntity: '',
+  reminderEntity: 'input_text.eye_hinweis',
+  reminderAckScript: 'script.eye_hinweis_quittieren',
   kamera: '',
   ton: true,
   label: false,
@@ -167,6 +170,18 @@ export function siteNachKonfig(datei) {
   if (src.doorEntity && !src.tuer) src.tuer = src.doorEntity;
   delete src.door;
   delete src.doorEntity;
+  if (src.presence && !src.presenceEntity) src.presenceEntity = src.presence;
+  if (src.presence_entity && !src.presenceEntity) src.presenceEntity = src.presence_entity;
+  delete src.presence;
+  delete src.presence_entity;
+  if (src.reminder && !src.reminderEntity) src.reminderEntity = src.reminder;
+  if (src.reminder_entity && !src.reminderEntity) src.reminderEntity = src.reminder_entity;
+  delete src.reminder;
+  delete src.reminder_entity;
+  if (src.reminderAck && !src.reminderAckScript) src.reminderAckScript = src.reminderAck;
+  if (src.reminder_ack && !src.reminderAckScript) src.reminderAckScript = src.reminder_ack;
+  delete src.reminderAck;
+  delete src.reminder_ack;
   if (src.camera && !src.kamera) src.kamera = src.camera;
   delete src.camera;
   if (src.dimAfter != null && src.dimNachSekunden == null) src.dimNachSekunden = src.dimAfter;
@@ -220,6 +235,18 @@ function nurBekannte(obj) {
   if ('tuer' in out) {
     const id = String(out.tuer || '').trim().toLowerCase();
     out.tuer = id && gueltigeEntity(id) ? id : '';
+  }
+  if ('presenceEntity' in out) {
+    const id = String(out.presenceEntity || '').trim().toLowerCase();
+    out.presenceEntity = id && gueltigeEntity(id) ? id : '';
+  }
+  if ('reminderEntity' in out) {
+    const id = String(out.reminderEntity || '').trim().toLowerCase();
+    out.reminderEntity = id && gueltigeEntity(id) ? id : '';
+  }
+  if ('reminderAckScript' in out) {
+    const id = String(out.reminderAckScript || '').trim().toLowerCase();
+    out.reminderAckScript = id && dienstAus(id) ? id : '';
   }
   if ('kamera' in out) {
     const id = String(out.kamera || '').trim().toLowerCase();
@@ -419,6 +446,12 @@ export function mitUrl(konfig, params) {
   if (p.get('np') === '1') n.nowPlaying = true;
   const tuer = p.get('door');
   if (tuer && gueltigeEntity(tuer.trim().toLowerCase())) n.tuer = tuer.trim().toLowerCase();
+  const presence = p.get('presence');
+  if (presence && gueltigeEntity(presence.trim().toLowerCase())) n.presenceEntity = presence.trim().toLowerCase();
+  const reminder = p.get('reminder');
+  if (reminder && gueltigeEntity(reminder.trim().toLowerCase())) n.reminderEntity = reminder.trim().toLowerCase();
+  const ack = p.get('reminder_ack') || p.get('reminderAck');
+  if (ack && dienstAus(ack.trim().toLowerCase())) n.reminderAckScript = ack.trim().toLowerCase();
   const kamera = p.get('camera');
   if (kamera && gueltigeEntity(kamera.trim().toLowerCase())) n.kamera = kamera.trim().toLowerCase();
   if (p.get('dim') != null && p.get('dim') !== '' && !Number.isNaN(+p.get('dim'))) {

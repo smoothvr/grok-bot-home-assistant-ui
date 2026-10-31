@@ -4,11 +4,11 @@
 
 Report vulnerabilities privately through GitHub security advisories:
 
-<https://github.com/stefanvr82/grok-bot-home-assistant-ui/security/advisories/new>
+<https://github.com/smoothvr/grok-bot-home-assistant-ui/security/advisories/new>
 
 Do not open a public issue for a security report. This project does not accept reports by email or by phone.
 
-The maintainer is [@stefanvr82](https://github.com/stefanvr82).
+The maintainer is [@smoothvr](https://github.com/smoothvr).
 
 ## What to leave out
 

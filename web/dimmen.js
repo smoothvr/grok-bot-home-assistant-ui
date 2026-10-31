@@ -26,6 +26,11 @@ function offen(state) {
   return s === 'on' || s === 'open';
 }
 
+// The door holds angry while the contact reads open. The first reading counts.
+export function tuerOffen(state) {
+  return offen(state);
+}
+
 // A greeting only when a known closed contact becomes open. The first reading does not count.
 export function tuerKante(vorher, state) {
   if (vorher == null || vorher === '') return false;

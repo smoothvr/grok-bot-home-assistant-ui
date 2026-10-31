@@ -8,9 +8,9 @@ export const HILFE_BASIS = 'https://www.herrvonundzu.eu/grok-bot-universal-home-
 export const HILFE_ANKER = ['display', 'sound', 'home-assistant', 'gestures', 'corners', 'states', 'security', 'demo', 'credits', 'requirements', 'dashboard', 'phone'];
 
 const GITHUB = {
-  maintainer: 'https://github.com/stefanvr82',
-  repo: 'https://github.com/stefanvr82/grok-bot-home-assistant-ui',
-  sponsors: 'https://github.com/sponsors/stefanvr82',
+  maintainer: 'https://github.com/smoothvr',
+  repo: 'https://github.com/smoothvr/grok-bot-home-assistant-ui',
+  sponsors: 'https://github.com/sponsors/smoothvr',
 };
 
 // Pass true or false to check both states. The default follows REPO_PUBLIC.

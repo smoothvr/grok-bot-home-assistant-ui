@@ -107,15 +107,18 @@ const manifest = JSON.parse(fs.readFileSync(new URL('./manifest.webmanifest', im
 const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
 assert(pkg.name === 'grok-bot-home-assistant-ui' && pkg.license === 'MIT', 'Paket');
 assert(manifest.name === 'Grok Bot Home Assistant UI' && manifest.short_name === 'Grok Bot', 'Manifest');
-assert(manifest.license === 'MIT' && manifest.maintainer === '@stefanvr82', 'Manifest-Maintainer');
+assert(manifest.license === 'MIT' && manifest.maintainer === '@smoothvr', 'Manifest-Maintainer');
 
 const seite = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+const einstellungen = fs.readFileSync(new URL('./settings.html', import.meta.url), 'utf8');
 const credit = 'https://www.herrvonundzu.eu/digitalisierung-automatisierung-4';
-assert(seite.split(credit).length === 2, 'the footer links to the maintainer');
-assert(seite.includes('assets/brand/hvuz-logo.jpg'), 'the page has the mark');
-assert(!seite.includes('Made by') && !seite.includes('Gemacht von'), 'no made-by line on the page');
+assert(einstellungen.split(credit).length === 2, 'the footer links to the maintainer');
+assert(einstellungen.includes('assets/brand/hvuz-logo.jpg'), 'the page has the mark');
+assert(!seite.includes('Made by') && !seite.includes('Gemacht von') && !einstellungen.includes('Made by'), 'no made-by line on the page');
 assert(!seite.includes('id="sound-hint"') && !seite.includes('id="demo-badge"') && !seite.includes('id="demo-hint"'), 'no sound hint and no demo badge');
-const creditsHtml = seite.slice(seite.indexOf('id="credits"'));
+assert(seite.includes('id="hear-hint"') && seite.includes('tap me to hear me'), 'one small hear hint');
+assert(seite.includes('manifest="eye-ui.appcache"'), 'the face references the application cache');
+const creditsHtml = einstellungen.slice(einstellungen.indexOf('id="credits"'));
 assert(creditsHtml && !creditsHtml.includes('github.com'), 'credits markup has no GitHub link while the repo is private');
 assert(creditsHtml.includes('id="link-projekt"') && creditsHtml.includes('#credits'), 'credits link to the project anchor');
 assert(creditsHtml.includes('credits.short'), 'credits stay a short line');
@@ -123,9 +126,9 @@ assert(REPO_PUBLIC === false, 'the shipped switch is off');
 const zu = repoLinks(false);
 assert(!zu.maintainer && !zu.repo && !zu.sponsors && !zu.repoLabel && !zu.supportLabel, 'private state has no GitHub link');
 const auf = repoLinks(true);
-assert(auf.maintainer === 'https://github.com/stefanvr82', 'public maintainer link');
-assert(auf.repo === 'https://github.com/stefanvr82/grok-bot-home-assistant-ui', 'public repository link');
-assert(auf.sponsors === 'https://github.com/sponsors/stefanvr82', 'public Sponsors link');
+assert(auf.maintainer === 'https://github.com/smoothvr', 'public maintainer link');
+assert(auf.repo === 'https://github.com/smoothvr/grok-bot-home-assistant-ui', 'public repository link');
+assert(auf.sponsors === 'https://github.com/sponsors/smoothvr', 'public Sponsors link');
 assert(auf.repoLabel === 'GitHub' && auf.supportLabel === 'GitHub Sponsors', 'public link labels');
 assert(!LINKS.repo && !LINKS.sponsors && !LINKS.maintainer, 'hilfe.js follows the switch');
 assert(LINKS.hvuz.includes('herrvonundzu.eu'), 'hilfe.js keeps HVUZ');
@@ -136,7 +139,7 @@ const seitenNotice = fs.readFileSync(new URL('./assets/brand/NOTICE.md', import.
 assert(/trademark/i.test(notice) && /all rights reserved/i.test(notice) && /not covered by the MIT/i.test(notice), 'brand notice');
 assert(seitenNotice === notice, 'the page package includes the brand notice');
 const funding = fs.readFileSync(new URL('../.github/FUNDING.yml', import.meta.url), 'utf8');
-assert(funding.includes('github: [stefanvr82]'), 'GitHub Sponsors');
+assert(funding.includes('github: [smoothvr]'), 'GitHub Sponsors');
 
 if (fehler) {
   console.error(`${fehler} checks failed`);

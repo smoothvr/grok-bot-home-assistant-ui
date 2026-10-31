@@ -1,0 +1,117 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="en" manifest="eye-ui.appcache">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<title>Settings</title>
+<style>
+  html, body { margin: 0; background: #0c0c0c; color: #f4efe8; }
+  body {
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+    padding: 24px 16px 48px;
+  }
+  main { max-width: 28rem; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+  p { margin: 0 0 16px; color: #b7aea3; }
+  label { display: block; margin: 14px 0 6px; font-size: 13px; letter-spacing: .04em; }
+  input, select {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid #2a2a2a; background: #161616; color: #f4efe8; font: inherit;
+  }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .check input { width: auto; }
+  button, .back {
+    display: inline-block; margin-top: 18px; margin-right: 8px; padding: 10px 16px;
+    border-radius: 999px; border: 0; background: #f4efe8; color: #111; font: inherit;
+    text-decoration: none;
+  }
+  #form-fehler { min-height: 1.2em; color: #e7a394; }
+  footer { margin-top: 28px; display: flex; align-items: center; gap: 12px; }
+  footer a { color: #b7aea3; }
+  #credits { margin-top: 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 data-i18n="settings.title">Settings</h1>
+  <p data-i18n="settings.intro" data-help="phone">Hold the top-left corner to open settings. The token stays in this browser.</p>
+  <p id="demo-sperre" hidden></p>
+  <form id="form">
+    <label for="ha-url" data-i18n="ha.url">Address</label>
+    <input id="ha-url" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ws://homeassistant.local:8123/api/websocket">
+    <label for="ha-token" data-i18n="ha.token">Long-lived token</label>
+    <input id="ha-token" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label class="check"><input id="token-loeschen" type="checkbox"> <span data-i18n="ha.forget">Delete the saved token</span></label>
+    <label for="ha-entity" data-i18n="ha.entity">State entity</label>
+    <input id="ha-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="input_select.eye_ui_state">
+    <label for="tuer-entity" data-i18n="ha.door">Front door</label>
+    <input id="tuer-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="binary_sensor.front_door">
+    <label for="presence-entity" data-i18n="ha.presence">Presence</label>
+    <input id="presence-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="binary_sensor.living_room_presence">
+    <label for="reminder-entity" data-i18n="ha.reminder">Reminder</label>
+    <input id="reminder-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="input_text.eye_hinweis">
+    <label for="reminder-ack" data-i18n="ha.reminderAck">Acknowledge reminder</label>
+    <input id="reminder-ack" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="script.eye_hinweis_quittieren">
+    <label for="schlaf-min" data-i18n="display.sleep">Sleep after minutes (0 = never)</label>
+    <input id="schlaf-min" type="number" min="0" step="1" value="15">
+    <label for="dim-nach" data-i18n="dim.after">Dim after seconds</label>
+    <input id="dim-nach" type="number" min="0" step="1" value="60">
+    <label for="dim-stufe" data-i18n="dim.level">Dim level, percent</label>
+    <input id="dim-stufe" type="number" min="5" max="100" step="1" value="30">
+    <label for="sprache" data-i18n="display.language">Language</label>
+    <select id="sprache">
+      <option value="auto">Auto</option>
+      <option value="en">English</option>
+      <option value="de">Deutsch</option>
+    </select>
+    <label for="alarm-staerke" data-i18n="alarm.label">Alarm</label>
+    <select id="alarm-staerke">
+      <option value="stark">Strong</option>
+      <option value="normal">Normal</option>
+    </select>
+    <label class="check"><input id="ton" type="checkbox"> <span data-i18n="display.sound">Sound</span></label>
+    <label class="check"><input id="uhr-an" type="checkbox"> <span data-i18n="display.clock">Clock</span></label>
+    <label class="check"><input id="demo-an" type="checkbox"> <span data-i18n="demo.link">Demo</span></label>
+    <p id="form-fehler"></p>
+    <button type="submit" data-i18n="action.save">Save</button>
+    <a class="back" href="index.html" data-i18n="set.back">Back to the face</a>
+  </form>
+  <footer class="fuss">
+    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.0.0</a>
+    <a class="logo-only" href="https://www.herrvonundzu.eu/digitalisierung-automatisierung-4">
+      <img src="assets/brand/hvuz-logo.jpg" width="22" height="22" alt="HVUZ">
+    </a>
+  </footer>
+  <div id="credits">
+    <p data-i18n="credits.short">Credits and notices are on the project page.</p>
+    <p><a id="link-projekt" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#credits" data-i18n="credits.page">Project page</a></p>
+  </div>
+</main>
+<script>
+(function () {
+  var modern = false;
+  try {
+    modern = typeof Object.fromEntries === 'function' &&
+      typeof String.prototype.replaceAll === 'function' &&
+      typeof window.PointerEvent === 'function' &&
+      typeof window.AudioContext === 'function';
+    eval('var probe = ({a:1, ...{b:2}}); probe?.a ?? 0;');
+  } catch (err) {
+    modern = false;
+  }
+  var script = document.createElement('script');
+  if (modern) {
+    script.type = 'module';
+    script.src = 'settings.js';
+  } else {
+    script.src = 'settings-legacy.js';
+  }
+  document.head.appendChild(script);
+})();
+</script>
+</body>
+</html>

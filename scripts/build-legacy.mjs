@@ -37,6 +37,10 @@ if (!/const VERSION = '[^']*';/.test(sw)) throw new Error('web/sw.js has no VERS
 const stamped = sw.replace(/const VERSION = '[^']*';/, `const VERSION = '${versionMatch[1]}';`);
 if (stamped !== sw) fs.writeFileSync(swPath, stamped);
 
+const banner = {
+  js: '// SPDX-License-Identifier: MIT\n// Built for Safari 10.1 (iOS 10.3). Refresh with npm run build.\n',
+};
+
 await esbuild.build({
   stdin: {
     contents: wrapped,
@@ -49,7 +53,17 @@ await esbuild.build({
   target: 'es2015',
   outfile: 'web/legacy.js',
   legalComments: 'none',
-  banner: {
-    js: '// SPDX-License-Identifier: MIT\n// Built for Safari 10.1 (iOS 10.3). Refresh with npm run build.\n',
-  },
+  banner,
 });
+
+await esbuild.build({
+  entryPoints: ['web/settings.js'],
+  bundle: true,
+  format: 'iife',
+  target: 'es2015',
+  outfile: 'web/settings-legacy.js',
+  legalComments: 'none',
+  banner,
+});
+
+await import('./appcache.mjs');
