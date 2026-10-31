@@ -64,9 +64,9 @@ A reminder from `input_text.eye_hinweis` wakes the face, shows â€œDon't forgetâ€
 
 <h2 id="demo">Demo</h2>
 
-A public page, and a fresh page with no Home Assistant address or token, opens asleep. Two lines offer the demo and a short introduction. The demo cycles what the face can do, including a wake, a reminder, and the door, then loops. A tap returns to sleep. The introduction is a few lines over the eyes. It talks about dropping tiles and a living house. Voice is named as the direction. This build does not listen. A configured install starts in the normal face. Settings links to the same demo and introduction.
+A public page, and a fresh page with no Home Assistant address or token, opens asleep. The screen is only the eyes. The first tap wakes them and plays every reaction once, with sound, then keeps looping. A tap during the loop still answers, and the loop continues. A configured install starts in the normal face.
 
-`?demo=1` still runs the longer tour, ends on music for 30 seconds, then starts again until a tap. `?lauf=1` is the short loop. `?intro=1` is the introduction. `?welcome=0` skips the sleeping start. On the public demo host no token is ever stored.
+`?demo=1` still runs the longer tour, ends on music for 30 seconds, then starts again until a tap. `?lauf=1` is the reaction showcase. `?welcome=0` skips the sleeping start. On the public demo host no token is ever stored.
 
 <h2 id="phone">Phone and tablet</h2>
 

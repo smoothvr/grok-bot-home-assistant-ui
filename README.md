@@ -44,8 +44,7 @@ Useful query parameters:
 | `?lang=de` or `?lang=en` | Language for this visit. |
 | `?sleep=20` | Sleep after 20 seconds. In the URL the value is seconds. In settings it is minutes. |
 | `?demo=1` | Longer tour. It ends on music for 30 seconds, then starts again. `?demo=0` skips that tour. |
-| `?lauf=1` | Short loop: reactions, a wake, a reminder, the door, then again. |
-| `?intro=1` | A few lines over the eyes. |
+| `?lauf=1` | Play every reaction once, then keep looping. |
 | `?welcome=0` | Skip the sleeping start. |
 | `?door=binary_sensor.front_door` | Hold angry while this contact is open, and relax when it closes. |
 | `?presence=binary_sensor.living_room_presence` | Wake from sleep when this sensor turns on. |
@@ -69,9 +68,9 @@ Settings has a Liveliness slider and a volume slider. Liveliness `0` keeps the g
 
 `speaking` on `input_select.eye_ui_state` lights the speaking colour while the eyes stay idle. `wake` on that same entity is the presence wake, not a separate clip.
 
-A public demo, and a fresh page with no Home Assistant address or token, opens asleep. Two lines sit under the eyes: start the demo, or a short introduction. The demo cycles reactions, a wake, a reminder, and the door going angry then relieved, then starts again. A tap leaves it and the eyes sleep again. The introduction is a few calm lines. Voice is the direction, not this build. On a configured install the face starts as usual. Settings still links to the demo and the introduction. `?demo=1` runs the longer tour and holds music for 30 seconds. `?lauf=1` is the short loop. `?intro=1` is the introduction.
+A public demo, and a fresh page with no Home Assistant address or token, opens asleep. There is nothing else on the screen. The first tap wakes the eyes, unlocks sound, and plays every reaction once, then keeps looping. A tap during the loop still gets the usual answer, and the loop continues. On a configured install the face starts as usual. `?demo=1` runs the longer tour and holds music for 30 seconds. `?lauf=1` is the reaction showcase.
 
-Hold the top-left corner for about 2 seconds to open settings, or tap the face five times. After the second touch, one faint line says so, once. There is no gear and no sheet.
+Hold the top-left corner for about 2 seconds to open settings, or tap the face five times. There is no gear and no sheet.
 
 ## Home Assistant
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-// First-load sleep, the quiet demo loop, and the intro.
-import { translate } from './strings.js';
+// First-load sleep, the one-pass showcase, and the looping demo.
 import { DEMO_HOST } from './konfig.js';
+import { REAKTION_IDS } from './reaktionen.js';
 import {
-  EMPFANG_REIHE, INTRO_KEYS, eckeHinweisFaellig, empfangSchritt, ohneHaus, sollWillkommen, tippFenster,
+  SHOW_PAUSE, LOOP_PAUSE, createSchleife, ersteRunde, ohneHaus, sollWillkommen, tippFenster,
 } from './empfang.js';
 import { glaettePegel, pegelAusHuelle } from './licht.js';
 
@@ -26,40 +26,41 @@ assert(sollWillkommen(leer, lan, '') === true, 'a fresh page with no Home Assist
 assert(sollWillkommen(haus, lan, '') === false, 'a configured install starts normally');
 assert(sollWillkommen({ haUrl: 'ws://ha.local/api/websocket', haToken: '' }, lan, '') === false, 'an address alone is enough');
 assert(sollWillkommen({ haUrl: '', haToken: 'x' }, lan, '') === false, 'a token alone is enough');
-assert(sollWillkommen(leer, lan, 'intro=1') === false, 'an intro link skips the sleep screen');
-assert(sollWillkommen(leer, lan, 'lauf=1') === false, 'a demo link skips the sleep screen');
+assert(sollWillkommen(leer, lan, 'lauf=1') === false, 'the showcase link skips the sleep screen');
 assert(sollWillkommen(leer, lan, 'demo=1') === false, 'the music tour skips the sleep screen');
 assert(sollWillkommen(leer, lan, 'ha=mock') === false, 'a mock connection is not the welcome');
 assert(sollWillkommen(leer, lan, 'state=angry') === false, 'a state link is not the welcome');
 assert(ohneHaus(leer, lan) === true && ohneHaus(haus, lan) === false, 'home is configured when an address or token is saved');
 
 {
-  const schritte = new Set();
-  let i = 0;
-  for (let n = 0; n < EMPFANG_REIHE.length; n++) {
-    const s = empfangSchritt(i);
-    schritte.add(s.kurz);
-    assert(s.ms > 0 && s.ms < 8000, 'each welcome step is short');
-    i = s.naechster;
+  const runde = ersteRunde(() => 0.2);
+  assert(runde.length === 14 && runde.length === REAKTION_IDS.length, 'the first pass plays every reaction');
+  const ids = runde.map((item) => item.id);
+  assert(ids.join('|') === REAKTION_IDS.join('|'), 'the first pass keeps the reaction order');
+  const einzig = {};
+  for (let i = 0; i < ids.length; i++) einzig[ids[i]] = true;
+  assert(Object.keys(einzig).length === 14, 'each reaction appears once');
+  for (let i = 0; i < runde.length; i++) {
+    assert(runde[i].index >= 0, 'each step has a variant');
   }
-  assert(i === 0, 'the welcome demo loops');
-  for (const name of ['wake', 'reminder', 'angry', 'relieved', 'curious', 'sleepy']) {
-    assert(schritte.has(name), `welcome demo includes ${name}`);
-  }
-  assert(!EMPFANG_REIHE.includes('musik_an'), 'the welcome demo does not sit on music');
 }
 
-for (const lang of ['en', 'de']) {
-  for (const key of INTRO_KEYS) {
-    const text = translate(lang, key);
-    assert(text && text.length > 8 && text.length < 180, `${lang} ${key} is a short line`);
+{
+  const schleife = createSchleife(() => 0.3);
+  let vorher = '';
+  const gesehen = {};
+  for (let i = 0; i < 20; i++) {
+    const schritt = schleife.naechste();
+    assert(schritt.id !== vorher, 'the loop does not repeat a reaction immediately');
+    assert(schritt.index >= 0, 'the loop picks a variant');
+    gesehen[schritt.id] = true;
+    vorher = schritt.id;
   }
-  const alle = INTRO_KEYS.map((key) => translate(lang, key)).join('\n');
-  assert(!/hey grok|ask grok|script\.grok/i.test(alle), `${lang} intro does not claim that asking Grok works`);
-  assert(/not in this version|noch nicht hier|does not listen|hört noch nicht/i.test(alle), `${lang} intro keeps voice as a direction`);
+  assert(Object.keys(gesehen).length > 1, 'the loop varies');
 }
-assert(translate('de', 'welcome.demo') === 'Demo starten' && translate('de', 'welcome.intro') === 'Einführung', 'German choices');
-assert(translate('en', 'welcome.demo') === 'Start the demo' && translate('en', 'hint.corner').includes('five'), 'English choices and the corner hint');
+
+assert(SHOW_PAUSE >= 0.6 && SHOW_PAUSE <= 1.4, 'the first pass leaves a short pause');
+assert(LOOP_PAUSE > SHOW_PAUSE && LOOP_PAUSE < 3, 'the loop is calmer than the first pass');
 
 {
   let zeiten = [];
@@ -73,9 +74,6 @@ assert(translate('en', 'welcome.demo') === 'Start the demo' && translate('en', '
   const spaet = tippFenster([0], 3000, 2200);
   assert(!spaet.settings && spaet.zeiten.length === 1, 'an old tap falls out of the window');
 }
-
-assert(eckeHinweisFaellig(false, 1) === false && eckeHinweisFaellig(false, 2) === true, 'the corner hint waits for a second touch');
-assert(eckeHinweisFaellig(true, 5) === false, 'the corner hint is once');
 
 assert(Math.abs(pegelAusHuelle('idle', 0, 'ruhig') - 0.32) < 1e-9, 'a quiet idle envelope sits at the low end');
 assert(Math.abs(pegelAusHuelle('idle', 1, 'ruhig') - 0.42) < 1e-9, 'a full idle envelope stays inside the high end');
@@ -93,4 +91,4 @@ if (fehler) {
   console.error(`${fehler} checks failed`);
   process.exit(1);
 }
-console.log('Welcome sleep, intro, and demo loop ok');
+console.log('Welcome sleep and the reaction showcase ok');

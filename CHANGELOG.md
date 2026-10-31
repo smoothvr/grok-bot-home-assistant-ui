@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2026-10-31
+
+### Changed
+
+- The sleeping start is only the eyes and the edge glow. The demo and introduction lines are gone.
+- The first tap wakes the face, unlocks sound, and plays each of the 14 reactions once. After that it keeps looping, with a little more air between steps. A tap during the loop still pokes, grumbles, or settles, and the loop continues.
+- The one-time settings sentence is gone. Five taps, or a two-second hold in the top corner, still open settings.
+
 ## [2.2.1] - 2026-10-31
 
 ### Fixed

@@ -19,15 +19,15 @@ import { demoSchritt } from './demo.js';
 import { createDemoMusic } from './demotrack.js';
 import { helligkeit, tuerOffen } from './dimmen.js';
 import { captionLine, resolveLocale, translate } from './strings.js';
-import { anwesend, createWecker, WAKE_VARIANTS } from './wache.js';
+import { anwesend, createWecker } from './wache.js';
 import { ackAnHa, createHinweis } from './hinweis.js';
 import { blickZumPunkt } from './blick.js';
 import {
-  ACK_POOL, FEHLER_POOL, HINWEIS_POOL, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
+  ACK_POOL, FEHLER_POOL, HINWEIS_POOL, REAKTIONEN, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
 } from './reaktionen.js';
 import { createStimme, pulsHuelle, bauePhrase } from './stimme.js';
 import {
-  INTRO_KEYS, INTRO_MS, eckeHinweisFaellig, empfangSchritt, ohneHaus, sollWillkommen, tippFenster,
+  createSchleife, ersteRunde, ohneHaus, schrittPause, sollWillkommen, tippFenster,
 } from './empfang.js';
 
 const q = new URLSearchParams(location.search);
@@ -92,17 +92,13 @@ let stoerungAktiv = false;
 let druck = null;
 let langTimer = 0;
 let modus = 'normal';
-let laufIndex = 0;
-let laufSeit = 0;
-let introIndex = 0;
-let introSeit = 0;
-let introTimer = 0;
 let tippZeiten = [];
 let tippGesamt = 0;
-let eckeHinweisGesehen = false;
+let einmal = [];
+let einmalPos = 0;
+let schleife = createSchleife();
+let schrittBis = 0;
 const LANG_MS = 720;
-const ECKE_HINT_KEY = 'eye_ui_hint_ecke';
-try { eckeHinweisGesehen = localStorage.getItem(ECKE_HINT_KEY) === '1'; } catch { /* private mode */ }
 
 function el(id) { return document.getElementById(id); }
 function t(key) { return translate(locale, key); }
@@ -114,7 +110,7 @@ function param(name, alt) {
 function zielId(node) {
   let n = node;
   while (n && n !== document) {
-    if (n.id === 'ecke' || n.id === 'hinweis' || n.id === 'wahl' || n.id === 'wahl-demo' || n.id === 'wahl-intro') return n.id;
+    if (n.id === 'ecke' || n.id === 'hinweis') return n.id;
     n = n.parentNode;
   }
   return '';
@@ -194,6 +190,7 @@ function spieleReaktion(id, opt) {
     blick: o.blick !== false,
   };
   if (o.ton !== false) sag(rend.phrase, o.gain == null ? 0.85 : o.gain);
+  if (modus === 'loop') schrittBis = Math.max(schrittBis, performance.now() + (rend.dur + 0.6) * 1000);
   return rend;
 }
 
@@ -210,7 +207,7 @@ function legeReaktion(pose) {
 }
 
 function istStoerung() {
-  if (modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf' || schauLaeuft || haStatus === 'mock') return false;
+  if (modus === 'schlaf' || modus === 'einmal' || modus === 'loop' || schauLaeuft || haStatus === 'mock') return false;
   if (haStatus === 'fehler' || haStatus === 'auth_ungueltig' || haStatus === 'getrennt') return true;
   if (haMeldung === 'tokenMissing' && konfig.haUrl) return true;
   if (haMeldung === 'tokenRejected' || haMeldung === 'connectFailed' || haMeldung === 'connectionTrouble') return true;
@@ -220,6 +217,11 @@ function istStoerung() {
 function zeichneCaption() {
   const node = el('caption');
   if (!node) return;
+  if (modus === 'schlaf') {
+    node.hidden = true;
+    node.textContent = '';
+    return;
+  }
   if (istStoerung() && !tuerAuf && bildKurz !== 'angry') {
     node.hidden = false;
     node.className = 'is-on';
@@ -445,7 +447,7 @@ function setStatus(s) {
 function syncHearHint() {
   const node = el('hear-hint');
   if (!node) return;
-  const ruhig = modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf';
+  const ruhig = modus === 'schlaf' || modus === 'einmal' || modus === 'loop';
   node.hidden = !!audioFrei || ruhig;
   if (!node.hidden) node.textContent = t('hint.hear');
 }
@@ -466,13 +468,13 @@ function syncDim(dt) {
   if (!node) return;
   let ziel = helligkeit(waechter.ruhe(), konfig.schlafSekunden, konfig);
   if (waechter.schlaeft && modus === 'normal') ziel = Math.min(ziel, konfig.dimStufe || 0.3);
-  if (schauLaeuft || hinweis.offen || tuerAuf || modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf') ziel = 1;
+  if (schauLaeuft || hinweis.offen || tuerAuf || modus === 'schlaf' || modus === 'einmal' || modus === 'loop') ziel = 1;
   dimIst += (ziel - dimIst) * Math.min(1, (dt || 0.016) * 2);
   node.style.opacity = String(Math.max(0, Math.min(0.92, 1 - dimIst)));
 }
 
 function syncPause() {
-  const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf');
+  const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === 'schlaf' || modus === 'einmal' || modus === 'loop');
   if (pausieren === pauseAn) return;
   pauseAn = pausieren;
   waechter.setPause(pausieren);
@@ -518,7 +520,7 @@ function stoppeSchau() {
     const node = el('hinweis');
     if (node) node.hidden = true;
   }
-  if (ohneHaus(konfig, location)) zeigeSchlafWahl();
+  if (ohneHaus(konfig, location)) zeigeSchlaf();
   else {
     waechter.setPause(false);
     pauseAn = !!(hinweis.offen || tuerAuf);
@@ -556,7 +558,7 @@ function beiSicht() {
 }
 
 function pruefeStoerung() {
-  if (modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf') return;
+  if (modus === 'schlaf' || modus === 'einmal' || modus === 'loop') return;
   const an = istStoerung();
   if (!an) {
     stoerungAktiv = false;
@@ -567,30 +569,9 @@ function pruefeStoerung() {
   spieleReaktion(reaktionen.aus(FEHLER_POOL), { ton: true, staerke: 0.55, gain: 0.45 });
 }
 
-function versteckeWahl() {
-  const wahl = el('wahl');
-  if (wahl) wahl.hidden = true;
-}
-
-function versteckeIntro() {
-  if (introTimer) clearTimeout(introTimer);
-  introTimer = 0;
-  const node = el('intro');
-  if (!node) return;
-  node.className = '';
-  node.hidden = true;
-}
-
-function zeigeSchlafWahl() {
-  modus = 'schlafwahl';
+function zeigeSchlaf() {
+  modus = 'schlaf';
   schauLaeuft = false;
-  versteckeIntro();
-  const wahl = el('wahl');
-  const demo = el('wahl-demo');
-  const intro = el('wahl-intro');
-  if (demo) demo.textContent = t('welcome.demo');
-  if (intro) intro.textContent = t('welcome.intro');
-  if (wahl) wahl.hidden = false;
   waechter.setPause(true);
   pauseAn = true;
   reaktion = null;
@@ -598,117 +579,50 @@ function zeigeSchlafWahl() {
   syncHearHint();
 }
 
-function abbrechenVorfuehrung() {
-  if (demoMusik.playing) demoMusik.stop();
-  schauLaeuft = false;
-  if (hinweis.offen) {
-    hinweis.quittieren();
-    const note = el('hinweis');
-    if (note) note.hidden = true;
-  }
-  versteckeIntro();
-  reaktion = null;
-  if (ohneHaus(konfig, location)) zeigeSchlafWahl();
-  else {
-    modus = 'normal';
-    versteckeWahl();
-    waechter.setPause(!!(hinweis.offen || tuerAuf));
-    pauseAn = !!(hinweis.offen || tuerAuf);
-    wendeZustand('idle', { ton: false, erzwingen: true });
-    syncHearHint();
-  }
+function spieleFest(item, loop) {
+  const liste = REAKTIONEN[item.id];
+  const rend = liste && liste[item.index];
+  if (!rend) return null;
+  if (bildKurz === 'schlafen' || bildKurz === 'angry') wendeZustand('idle', { ton: false, erzwingen: true });
+  const live = konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit;
+  reaktion = {
+    rend,
+    t0: augen.now,
+    staerke: 0.4 + 0.6 * Math.max(0, Math.min(1, live)),
+    blick: true,
+  };
+  sag(rend.phrase, 0.85);
+  schrittBis = performance.now() + (rend.dur + schrittPause(loop)) * 1000;
+  return rend;
 }
 
-function sprungLauf(schritt) {
-  if (schritt.kurz === 'wake') {
-    starteWecken(WAKE_VARIANTS[schritt.index % WAKE_VARIANTS.length]);
-    return;
-  }
-  if (schritt.kurz === 'reminder') {
-    zeigeHinweis(t('hint.demo'), 'demo');
-    return;
-  }
-  if (hinweis.offen && hinweisQuelle === 'demo') {
-    hinweis.quittieren();
-    const note = el('hinweis');
-    if (note) note.hidden = true;
-  }
-  if (schritt.kurz === 'angry') {
-    wendeZustand('angry', { ton: true, erzwingen: true });
-    return;
-  }
-  if (schritt.kurz === 'relieved') {
-    wendeZustand('idle', { ton: false, erzwingen: true });
-    spieleReaktion('relieved', { ton: true, erzwingen: true });
-    return;
-  }
-  if (istReaktion(schritt.kurz)) {
-    if (bildKurz !== 'idle') wendeZustand('idle', { ton: false, erzwingen: true });
-    spieleReaktion(schritt.kurz, { ton: true, erzwingen: true });
-    return;
-  }
-  wendeZustand(schritt.kurz, { ton: true, erzwingen: true });
-}
-
-function starteLauf() {
-  modus = 'lauf';
-  versteckeWahl();
-  versteckeIntro();
-  waechter.beruehrt();
-  waechter.setPause(true);
-  pauseAn = true;
-  laufIndex = 0;
-  laufSeit = performance.now();
-  sprungLauf(empfangSchritt(0));
-  syncHearHint();
-}
-
-function tickLauf(now) {
-  if (modus !== 'lauf') return;
-  const schritt = empfangSchritt(laufIndex);
-  if (now - laufSeit < schritt.ms) return;
-  laufIndex = schritt.naechster;
-  laufSeit = now;
-  sprungLauf(empfangSchritt(laufIndex));
-}
-
-function zeigeIntroZeile(index) {
-  const node = el('intro');
-  const text = el('intro-text');
-  if (!node || !text) return;
-  text.textContent = t(INTRO_KEYS[index]);
-  node.hidden = false;
-  node.className = '';
-  if (introTimer) clearTimeout(introTimer);
-  introTimer = setTimeout(() => { node.className = 'is-on'; }, 40);
-}
-
-function starteIntro() {
-  modus = 'intro';
-  versteckeWahl();
+function starteEinmal() {
+  modus = 'einmal';
   waechter.beruehrt();
   waechter.setPause(true);
   pauseAn = true;
   wendeZustand('idle', { ton: false, erzwingen: true });
-  introIndex = 0;
-  introSeit = performance.now();
-  zeigeIntroZeile(0);
+  einmal = ersteRunde();
+  einmalPos = 0;
+  schleife = createSchleife();
+  spieleFest(einmal[0], false);
   syncHearHint();
 }
 
-function tickIntro(now) {
-  if (modus !== 'intro') return;
-  if (now - introSeit < INTRO_MS) return;
-  introIndex += 1;
-  introSeit = now;
-  if (introIndex >= INTRO_KEYS.length) {
-    abbrechenVorfuehrung();
+function tickVorfuehrung(now) {
+  if (modus !== 'einmal' && modus !== 'loop') return;
+  if (now < schrittBis) return;
+  if (modus === 'einmal') {
+    einmalPos += 1;
+    if (einmalPos >= einmal.length) {
+      modus = 'loop';
+      spieleFest(schleife.naechste(), true);
+      return;
+    }
+    spieleFest(einmal[einmalPos], false);
     return;
   }
-  const node = el('intro');
-  if (node) node.className = '';
-  if (introTimer) clearTimeout(introTimer);
-  introTimer = setTimeout(() => { if (modus === 'intro') zeigeIntroZeile(introIndex); }, 380);
+  spieleFest(schleife.naechste(), true);
 }
 
 function merkeTipp(now) {
@@ -719,23 +633,12 @@ function merkeTipp(now) {
     location.href = 'settings.html';
     return true;
   }
-  if (eckeHinweisFaellig(eckeHinweisGesehen, tippGesamt) && modus === 'normal') {
-    eckeHinweisGesehen = true;
-    try { localStorage.setItem(ECKE_HINT_KEY, '1'); } catch { /* private mode */ }
-    const node = el('ecke-hint');
-    if (node) {
-      node.hidden = false;
-      node.textContent = t('hint.corner');
-      setTimeout(() => { node.hidden = true; }, 6500);
-    }
-  }
   return false;
 }
 
 function frame(now) {
   tickSchau(now);
-  tickLauf(now);
-  tickIntro(now);
+  tickVorfuehrung(now);
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   syncPause();
@@ -780,8 +683,7 @@ const sequence = param('sequence', 'sequenz');
 const reaktionStart = param('reaction', 'reaktion');
 const willkommen = sollWillkommen(konfig, location, q);
 if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-if (param('intro') === '1' && !startState && !sequence) starteIntro();
-else if (param('lauf') === '1' && !startState && !sequence) starteLauf();
+if (param('lauf') === '1' && !startState && !sequence) starteEinmal();
 else if (param('tour', 'ablauf') || (param('demo') === '1' && !startState && !sequence && !reaktionStart)) starteSchau();
 else if (reaktionStart && istReaktion(reaktionStart)) {
   reaktionHoren = reaktionStart;
@@ -800,7 +702,7 @@ else if (sequence) {
     else wendeZustand(roh, { ton: true, erzwingen: true });
   };
   setTimeout(() => { schritt(); setInterval(schritt, jede); }, 400);
-} else if (willkommen) zeigeSchlafWahl();
+} else if (willkommen) zeigeSchlaf();
 
 window.addEventListener('resize', () => renderer.resize());
 window.addEventListener('online', () => { if (ha && ha.nudge) ha.nudge(); });
@@ -812,10 +714,6 @@ window.addEventListener('mousedown', ersterKontakt, true);
 
 onZeiger(el('hinweis'), 'up', () => {
   ersterKontakt();
-  if (modus === 'lauf' || modus === 'intro') {
-    abbrechenVorfuehrung();
-    return;
-  }
   quittiereHinweis();
 });
 onZeiger(el('ecke'), 'down', (e) => {
@@ -842,24 +740,19 @@ if (ecke) {
   });
 }
 
-onZeiger(el('wahl-demo'), 'up', () => {
-  ersterKontakt();
-  starteLauf();
-});
-onZeiger(el('wahl-intro'), 'up', () => {
-  ersterKontakt();
-  starteIntro();
-});
-
 onZeiger(document.body, 'down', (e) => {
   ersterKontakt();
   if (zielId(e.target)) return;
-  if (modus === 'lauf' || modus === 'intro' || schauLaeuft) {
-    if (schauLaeuft) stoppeSchau();
-    if (modus === 'lauf' || modus === 'intro') abbrechenVorfuehrung();
+  if (modus === 'schlaf') {
+    starteEinmal();
+    merkeTipp(performance.now());
     return;
   }
-  if (modus === 'schlafwahl') {
+  if (schauLaeuft) {
+    stoppeSchau();
+    return;
+  }
+  if (modus === 'einmal') {
     merkeTipp(performance.now());
     return;
   }

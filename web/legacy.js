@@ -1649,15 +1649,6 @@
       "hint.hear": "tap me to hear me",
       "hint.forget": "Don't forget",
       "hint.demo": "Paper bin",
-      "hint.corner": "Hold the top corner, or tap five times.",
-      "welcome.demo": "Start the demo",
-      "welcome.intro": "Introduction",
-      "intro.1": "I want this face to retire the tiles.",
-      "intro.2": "A house run like KNX or Loxone should feel alive, not just switched.",
-      "intro.3": "That needs a local link, a little learning, and a screen that stays simple.",
-      "intro.4": "Voice and a few small gestures are the direction. This build does not listen yet.",
-      "intro.5": "It should only speak up when something fits, and not take itself too seriously.",
-      "intro.6": "Later it may change automations and think a step ahead. Not in this version.",
       "preview.summary": "Reactions",
       "preview.help": "A quiet list for trying each reaction. The first tap on the face unlocks the sound.",
       "cmd.help": "A script entity, or a service and a target, such as script.eye_music_on or light.turn_on/light.living_room.",
@@ -1970,15 +1961,6 @@
       "hint.hear": "tipp mich an, dann h\xF6rst du mich",
       "hint.forget": "Nicht vergessen",
       "hint.demo": "Papiertonne",
-      "hint.corner": "Oben links halten, oder f\xFCnfmal tippen.",
-      "welcome.demo": "Demo starten",
-      "welcome.intro": "Einf\xFChrung",
-      "intro.1": "Ich m\xF6chte mit diesem Gesicht die Kacheln loswerden.",
-      "intro.2": "Ein Haus wie mit KNX oder Loxone soll lebendig wirken, nicht nur schalten.",
-      "intro.3": "Daf\xFCr braucht es die lokale Anbindung, ein bisschen Lernen, und eine einfache Fl\xE4che.",
-      "intro.4": "Stimme und ein paar kleine Gesten sind die Richtung. Diese Fassung h\xF6rt noch nicht zu.",
-      "intro.5": "Es soll nur etwas sagen, wenn es passt, und sich nicht zu wichtig nehmen.",
-      "intro.6": "Sp\xE4ter kann es Automationen \xE4ndern und einen Schritt vorausdenken. Noch nicht hier.",
       "preview.summary": "Reaktionen",
       "preview.help": "Eine stille Liste, um jede Reaktion zu pr\xFCfen. Der erste Tipp auf das Gesicht schaltet den Ton frei.",
       "cmd.help": "Eine Skript-Entity oder ein Dienst mit Ziel, zum Beispiel script.eye_music_on oder light.turn_on/light.living_room.",
@@ -4984,24 +4966,8 @@
   }
 
   // web/empfang.js
-  var INTRO_KEYS = ["intro.1", "intro.2", "intro.3", "intro.4", "intro.5", "intro.6"];
-  var INTRO_MS = 3400;
-  var EMPFANG_REIHE = [
-    "hallo",
-    "curious",
-    "thinking",
-    "nod",
-    "happy",
-    "wake",
-    "reminder",
-    "shy",
-    "sad",
-    "angry",
-    "relieved",
-    "sleepy",
-    "content"
-  ];
-  var EMPFANG_MS = 3200;
+  var SHOW_PAUSE = 1;
+  var LOOP_PAUSE = 1.55;
   var FENSTER_MS = 2200;
   function paramsVon(params) {
     return params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
@@ -5016,18 +4982,40 @@
   function sollWillkommen(konfig, ort, params) {
     const p = paramsVon(params);
     if (p.get("demo") === "1" || p.get("tour") || p.get("ablauf")) return false;
-    if (p.get("intro") === "1" || p.get("lauf") === "1") return false;
+    if (p.get("lauf") === "1") return false;
     if (p.get("state") || p.get("zustand") || p.get("reaction") || p.get("reaktion")) return false;
     if (p.get("sequence") || p.get("sequenz")) return false;
     if (p.get("ha") === "mock") return false;
     if (p.get("welcome") === "0") return false;
     return ohneHaus(konfig, ort);
   }
-  function empfangSchritt(index) {
-    const n = EMPFANG_REIHE.length;
-    const i = (index % n + n) % n;
-    const kurz = EMPFANG_REIHE[i];
-    return { index: i, kurz, ms: EMPFANG_MS, naechster: (i + 1) % n };
+  function ersteRunde(rnd) {
+    const out = [];
+    for (let i = 0; i < REAKTION_IDS.length; i++) {
+      const id = REAKTION_IDS[i];
+      const n = REAKTIONEN[id].length;
+      out.push({ id, index: waehleIndex(n, null, rnd) });
+    }
+    return out;
+  }
+  function createSchleife(rnd) {
+    let letzte = null;
+    const varianten = {};
+    return {
+      naechste() {
+        const vorher = letzte == null ? null : REAKTION_IDS.indexOf(letzte);
+        const idI = waehleIndex(REAKTION_IDS.length, vorher, rnd);
+        const id = REAKTION_IDS[idI];
+        const n = REAKTIONEN[id].length;
+        const index = waehleIndex(n, varianten[id] == null ? null : varianten[id], rnd);
+        varianten[id] = index;
+        letzte = id;
+        return { id, index };
+      }
+    };
+  }
+  function schrittPause(loop) {
+    return loop ? LOOP_PAUSE : SHOW_PAUSE;
   }
   function tippFenster(zeiten, now, fenster) {
     const grenze = fenster > 0 ? fenster : FENSTER_MS;
@@ -5037,9 +5025,6 @@
     for (let i = 0; i < liste2.length; i++) if (t - liste2[i] < grenze) offen2.push(liste2[i]);
     offen2.push(t);
     return { zeiten: offen2.length >= 5 ? [] : offen2, settings: offen2.length >= 5 };
-  }
-  function eckeHinweisFaellig(gesehen, tipps) {
-    return !gesehen && tipps >= 2;
   }
 
   // web/app.js
@@ -5105,20 +5090,13 @@
       let druck = null;
       let langTimer = 0;
       let modus = "normal";
-      let laufIndex = 0;
-      let laufSeit = 0;
-      let introIndex = 0;
-      let introSeit = 0;
-      let introTimer = 0;
       let tippZeiten = [];
       let tippGesamt = 0;
-      let eckeHinweisGesehen = false;
+      let einmal = [];
+      let einmalPos = 0;
+      let schleife = createSchleife();
+      let schrittBis = 0;
       const LANG_MS = 720;
-      const ECKE_HINT_KEY = "eye_ui_hint_ecke";
-      try {
-        eckeHinweisGesehen = localStorage.getItem(ECKE_HINT_KEY) === "1";
-      } catch (e) {
-      }
       function el(id) {
         return document.getElementById(id);
       }
@@ -5133,7 +5111,7 @@
       function zielId(node) {
         let n = node;
         while (n && n !== document) {
-          if (n.id === "ecke" || n.id === "hinweis" || n.id === "wahl" || n.id === "wahl-demo" || n.id === "wahl-intro") return n.id;
+          if (n.id === "ecke" || n.id === "hinweis") return n.id;
           n = n.parentNode;
         }
         return "";
@@ -5208,6 +5186,7 @@
           blick: o.blick !== false
         };
         if (o.ton !== false) sag(rend.phrase, o.gain == null ? 0.85 : o.gain);
+        if (modus === "loop") schrittBis = Math.max(schrittBis, performance.now() + (rend.dur + 0.6) * 1e3);
         return rend;
       }
       function legeReaktion(pose) {
@@ -5222,7 +5201,7 @@
         return mische(pose, extra, s, reaktion.blick);
       }
       function istStoerung() {
-        if (modus === "schlafwahl" || modus === "intro" || modus === "lauf" || schauLaeuft || haStatus === "mock") return false;
+        if (modus === "schlaf" || modus === "einmal" || modus === "loop" || schauLaeuft || haStatus === "mock") return false;
         if (haStatus === "fehler" || haStatus === "auth_ungueltig" || haStatus === "getrennt") return true;
         if (haMeldung === "tokenMissing" && konfig.haUrl) return true;
         if (haMeldung === "tokenRejected" || haMeldung === "connectFailed" || haMeldung === "connectionTrouble") return true;
@@ -5231,6 +5210,11 @@
       function zeichneCaption() {
         const node = el("caption");
         if (!node) return;
+        if (modus === "schlaf") {
+          node.hidden = true;
+          node.textContent = "";
+          return;
+        }
         if (istStoerung() && !tuerAuf && bildKurz !== "angry") {
           node.hidden = false;
           node.className = "is-on";
@@ -5448,7 +5432,7 @@
       function syncHearHint() {
         const node = el("hear-hint");
         if (!node) return;
-        const ruhig = modus === "schlafwahl" || modus === "intro" || modus === "lauf";
+        const ruhig = modus === "schlaf" || modus === "einmal" || modus === "loop";
         node.hidden = !!audioFrei || ruhig;
         if (!node.hidden) node.textContent = t("hint.hear");
       }
@@ -5467,12 +5451,12 @@
         if (!node) return;
         let ziel = helligkeit(waechter.ruhe(), konfig.schlafSekunden, konfig);
         if (waechter.schlaeft && modus === "normal") ziel = Math.min(ziel, konfig.dimStufe || 0.3);
-        if (schauLaeuft || hinweis.offen || tuerAuf || modus === "schlafwahl" || modus === "intro" || modus === "lauf") ziel = 1;
+        if (schauLaeuft || hinweis.offen || tuerAuf || modus === "schlaf" || modus === "einmal" || modus === "loop") ziel = 1;
         dimIst += (ziel - dimIst) * Math.min(1, (dt || 0.016) * 2);
         node.style.opacity = String(Math.max(0, Math.min(0.92, 1 - dimIst)));
       }
       function syncPause() {
-        const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === "schlafwahl" || modus === "intro" || modus === "lauf");
+        const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === "schlaf" || modus === "einmal" || modus === "loop");
         if (pausieren === pauseAn) return;
         pauseAn = pausieren;
         waechter.setPause(pausieren);
@@ -5514,7 +5498,7 @@
           const node = el("hinweis");
           if (node) node.hidden = true;
         }
-        if (ohneHaus(konfig, location)) zeigeSchlafWahl();
+        if (ohneHaus(konfig, location)) zeigeSchlaf();
         else {
           waechter.setPause(false);
           pauseAn = !!(hinweis.offen || tuerAuf);
@@ -5548,7 +5532,7 @@
         if (ha && ha.nudge) ha.nudge();
       }
       function pruefeStoerung() {
-        if (modus === "schlafwahl" || modus === "intro" || modus === "lauf") return;
+        if (modus === "schlaf" || modus === "einmal" || modus === "loop") return;
         const an = istStoerung();
         if (!an) {
           stoerungAktiv = false;
@@ -5558,143 +5542,57 @@
         stoerungAktiv = true;
         spieleReaktion(reaktionen.aus(FEHLER_POOL), { ton: true, staerke: 0.55, gain: 0.45 });
       }
-      function versteckeWahl() {
-        const wahl = el("wahl");
-        if (wahl) wahl.hidden = true;
-      }
-      function versteckeIntro() {
-        if (introTimer) clearTimeout(introTimer);
-        introTimer = 0;
-        const node = el("intro");
-        if (!node) return;
-        node.className = "";
-        node.hidden = true;
-      }
-      function zeigeSchlafWahl() {
-        modus = "schlafwahl";
+      function zeigeSchlaf() {
+        modus = "schlaf";
         schauLaeuft = false;
-        versteckeIntro();
-        const wahl = el("wahl");
-        const demo = el("wahl-demo");
-        const intro = el("wahl-intro");
-        if (demo) demo.textContent = t("welcome.demo");
-        if (intro) intro.textContent = t("welcome.intro");
-        if (wahl) wahl.hidden = false;
         waechter.setPause(true);
         pauseAn = true;
         reaktion = null;
         wendeZustand("schlafen", { ton: false, erzwingen: true });
         syncHearHint();
       }
-      function abbrechenVorfuehrung() {
-        if (demoMusik.playing) demoMusik.stop();
-        schauLaeuft = false;
-        if (hinweis.offen) {
-          hinweis.quittieren();
-          const note = el("hinweis");
-          if (note) note.hidden = true;
-        }
-        versteckeIntro();
-        reaktion = null;
-        if (ohneHaus(konfig, location)) zeigeSchlafWahl();
-        else {
-          modus = "normal";
-          versteckeWahl();
-          waechter.setPause(!!(hinweis.offen || tuerAuf));
-          pauseAn = !!(hinweis.offen || tuerAuf);
-          wendeZustand("idle", { ton: false, erzwingen: true });
-          syncHearHint();
-        }
+      function spieleFest(item, loop) {
+        const liste2 = REAKTIONEN[item.id];
+        const rend = liste2 && liste2[item.index];
+        if (!rend) return null;
+        if (bildKurz === "schlafen" || bildKurz === "angry") wendeZustand("idle", { ton: false, erzwingen: true });
+        const live = konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit;
+        reaktion = {
+          rend,
+          t0: augen.now,
+          staerke: 0.4 + 0.6 * Math.max(0, Math.min(1, live)),
+          blick: true
+        };
+        sag(rend.phrase, 0.85);
+        schrittBis = performance.now() + (rend.dur + schrittPause(loop)) * 1e3;
+        return rend;
       }
-      function sprungLauf(schritt) {
-        if (schritt.kurz === "wake") {
-          starteWecken(WAKE_VARIANTS[schritt.index % WAKE_VARIANTS.length]);
-          return;
-        }
-        if (schritt.kurz === "reminder") {
-          zeigeHinweis(t("hint.demo"), "demo");
-          return;
-        }
-        if (hinweis.offen && hinweisQuelle === "demo") {
-          hinweis.quittieren();
-          const note = el("hinweis");
-          if (note) note.hidden = true;
-        }
-        if (schritt.kurz === "angry") {
-          wendeZustand("angry", { ton: true, erzwingen: true });
-          return;
-        }
-        if (schritt.kurz === "relieved") {
-          wendeZustand("idle", { ton: false, erzwingen: true });
-          spieleReaktion("relieved", { ton: true, erzwingen: true });
-          return;
-        }
-        if (istReaktion(schritt.kurz)) {
-          if (bildKurz !== "idle") wendeZustand("idle", { ton: false, erzwingen: true });
-          spieleReaktion(schritt.kurz, { ton: true, erzwingen: true });
-          return;
-        }
-        wendeZustand(schritt.kurz, { ton: true, erzwingen: true });
-      }
-      function starteLauf() {
-        modus = "lauf";
-        versteckeWahl();
-        versteckeIntro();
-        waechter.beruehrt();
-        waechter.setPause(true);
-        pauseAn = true;
-        laufIndex = 0;
-        laufSeit = performance.now();
-        sprungLauf(empfangSchritt(0));
-        syncHearHint();
-      }
-      function tickLauf(now) {
-        if (modus !== "lauf") return;
-        const schritt = empfangSchritt(laufIndex);
-        if (now - laufSeit < schritt.ms) return;
-        laufIndex = schritt.naechster;
-        laufSeit = now;
-        sprungLauf(empfangSchritt(laufIndex));
-      }
-      function zeigeIntroZeile(index) {
-        const node = el("intro");
-        const text = el("intro-text");
-        if (!node || !text) return;
-        text.textContent = t(INTRO_KEYS[index]);
-        node.hidden = false;
-        node.className = "";
-        if (introTimer) clearTimeout(introTimer);
-        introTimer = setTimeout(() => {
-          node.className = "is-on";
-        }, 40);
-      }
-      function starteIntro() {
-        modus = "intro";
-        versteckeWahl();
+      function starteEinmal() {
+        modus = "einmal";
         waechter.beruehrt();
         waechter.setPause(true);
         pauseAn = true;
         wendeZustand("idle", { ton: false, erzwingen: true });
-        introIndex = 0;
-        introSeit = performance.now();
-        zeigeIntroZeile(0);
+        einmal = ersteRunde();
+        einmalPos = 0;
+        schleife = createSchleife();
+        spieleFest(einmal[0], false);
         syncHearHint();
       }
-      function tickIntro(now) {
-        if (modus !== "intro") return;
-        if (now - introSeit < INTRO_MS) return;
-        introIndex += 1;
-        introSeit = now;
-        if (introIndex >= INTRO_KEYS.length) {
-          abbrechenVorfuehrung();
+      function tickVorfuehrung(now) {
+        if (modus !== "einmal" && modus !== "loop") return;
+        if (now < schrittBis) return;
+        if (modus === "einmal") {
+          einmalPos += 1;
+          if (einmalPos >= einmal.length) {
+            modus = "loop";
+            spieleFest(schleife.naechste(), true);
+            return;
+          }
+          spieleFest(einmal[einmalPos], false);
           return;
         }
-        const node = el("intro");
-        if (node) node.className = "";
-        if (introTimer) clearTimeout(introTimer);
-        introTimer = setTimeout(() => {
-          if (modus === "intro") zeigeIntroZeile(introIndex);
-        }, 380);
+        spieleFest(schleife.naechste(), true);
       }
       function merkeTipp(now) {
         const z = tippFenster(tippZeiten, now, 2200);
@@ -5704,27 +5602,11 @@
           location.href = "settings.html";
           return true;
         }
-        if (eckeHinweisFaellig(eckeHinweisGesehen, tippGesamt) && modus === "normal") {
-          eckeHinweisGesehen = true;
-          try {
-            localStorage.setItem(ECKE_HINT_KEY, "1");
-          } catch (e) {
-          }
-          const node = el("ecke-hint");
-          if (node) {
-            node.hidden = false;
-            node.textContent = t("hint.corner");
-            setTimeout(() => {
-              node.hidden = true;
-            }, 6500);
-          }
-        }
         return false;
       }
       function frame(now) {
         tickSchau(now);
-        tickLauf(now);
-        tickIntro(now);
+        tickVorfuehrung(now);
         const dt = Math.min(0.1, (now - last) / 1e3);
         last = now;
         syncPause();
@@ -5765,8 +5647,7 @@
       const reaktionStart = param("reaction", "reaktion");
       const willkommen = sollWillkommen(konfig, location, q);
       if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-      if (param("intro") === "1" && !startState && !sequence) starteIntro();
-      else if (param("lauf") === "1" && !startState && !sequence) starteLauf();
+      if (param("lauf") === "1" && !startState && !sequence) starteEinmal();
       else if (param("tour", "ablauf") || param("demo") === "1" && !startState && !sequence && !reaktionStart) starteSchau();
       else if (reaktionStart && istReaktion(reaktionStart)) {
         reaktionHoren = reaktionStart;
@@ -5787,7 +5668,7 @@
           schritt();
           setInterval(schritt, jede);
         }, 400);
-      } else if (willkommen) zeigeSchlafWahl();
+      } else if (willkommen) zeigeSchlaf();
       window.addEventListener("resize", () => renderer.resize());
       window.addEventListener("online", () => {
         if (ha && ha.nudge) ha.nudge();
@@ -5801,10 +5682,6 @@
       window.addEventListener("mousedown", ersterKontakt, true);
       onZeiger(el("hinweis"), "up", () => {
         ersterKontakt();
-        if (modus === "lauf" || modus === "intro") {
-          abbrechenVorfuehrung();
-          return;
-        }
         quittiereHinweis();
       });
       onZeiger(el("ecke"), "down", (e) => {
@@ -5830,23 +5707,19 @@
           location.href = "settings.html";
         });
       }
-      onZeiger(el("wahl-demo"), "up", () => {
-        ersterKontakt();
-        starteLauf();
-      });
-      onZeiger(el("wahl-intro"), "up", () => {
-        ersterKontakt();
-        starteIntro();
-      });
       onZeiger(document.body, "down", (e) => {
         ersterKontakt();
         if (zielId(e.target)) return;
-        if (modus === "lauf" || modus === "intro" || schauLaeuft) {
-          if (schauLaeuft) stoppeSchau();
-          if (modus === "lauf" || modus === "intro") abbrechenVorfuehrung();
+        if (modus === "schlaf") {
+          starteEinmal();
+          merkeTipp(performance.now());
           return;
         }
-        if (modus === "schlafwahl") {
+        if (schauLaeuft) {
+          stoppeSchau();
+          return;
+        }
+        if (modus === "einmal") {
           merkeTipp(performance.now());
           return;
         }
