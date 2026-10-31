@@ -43,7 +43,10 @@ Useful query parameters:
 | `?clock=1` | Show the 24-hour clock. It is off unless you turn it on. |
 | `?lang=de` or `?lang=en` | Language for this visit. |
 | `?sleep=20` | Sleep after 20 seconds. In the URL the value is seconds. In settings it is minutes. |
-| `?demo=1` | Loop the emotions, end on music for 30 seconds, then start again. `?demo=0` keeps a public page idle so it can be set up. |
+| `?demo=1` | Longer tour. It ends on music for 30 seconds, then starts again. `?demo=0` skips that tour. |
+| `?lauf=1` | Short loop: reactions, a wake, a reminder, the door, then again. |
+| `?intro=1` | A few lines over the eyes. |
+| `?welcome=0` | Skip the sleeping start. |
 | `?door=binary_sensor.front_door` | Hold angry while this contact is open, and relax when it closes. |
 | `?presence=binary_sensor.living_room_presence` | Wake from sleep when this sensor turns on. |
 | `?alarm=strong` or `?alarm=normal` | Alarm intensity. `?alarm_intensity=` accepts the same words. Strong is the default. |
@@ -54,7 +57,7 @@ Phone and tablet keep separate saved profiles in the same browser.
 
 ## The face
 
-One look. Soft eyes, and a living edge light on every state except angry. Angry replaces that light with red for as long as the state holds. The front door does the same while its contact is open.
+One look. The eyes are flat and full-screen on black. There is no square, no cube, and no frame around them. A soft glow follows the screen edge. It stays very low while the face is idle, and it rises with the sound of a reaction, then settles. Red is only for angry. The front door does the same while its contact is open.
 
 Sleep is in minutes. `0` keeps the eyes awake. After `dimAfter` seconds of quiet the page dims (30 percent unless you change it). While the eyes are asleep the screen stays dim. A tap wakes them. Presence can wake them only from sleep, and only again after the next sleep.
 
@@ -66,9 +69,9 @@ Settings has a Liveliness slider and a volume slider. Liveliness `0` keeps the g
 
 `speaking` on `input_select.eye_ui_state` lights the speaking colour while the eyes stay idle. `wake` on that same entity is the presence wake, not a separate clip.
 
-Demo mode loops the emotions and the newer reactions, and ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. It does not change a saved token.
+A public demo, and a fresh page with no Home Assistant address or token, opens asleep. Two lines sit under the eyes: start the demo, or a short introduction. The demo cycles reactions, a wake, a reminder, and the door going angry then relieved, then starts again. A tap leaves it and the eyes sleep again. The introduction is a few calm lines. Voice is the direction, not this build. On a configured install the face starts as usual. Settings still links to the demo and the introduction. `?demo=1` runs the longer tour and holds music for 30 seconds. `?lauf=1` is the short loop. `?intro=1` is the introduction.
 
-Hold the top-left corner for about 2 seconds to open settings. There is no gear and no sheet.
+Hold the top-left corner for about 2 seconds to open settings, or tap the face five times. After the second touch, one faint line says so, once. There is no gear and no sheet.
 
 ## Home Assistant
 

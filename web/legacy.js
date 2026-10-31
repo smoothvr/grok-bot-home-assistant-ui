@@ -561,8 +561,8 @@
   function blickIntervall(lebendigkeit, rnd) {
     const zufall = typeof rnd === "function" ? rnd : Math.random;
     const live = clamp012(lebendigkeit);
-    const lo = 2.8 - live * 1.5;
-    const hi = 6.4 - live * 3.1;
+    const lo = 3.6 - live * 1.6;
+    const hi = 8.2 - live * 3.2;
     const t = lo + Number(zufall()) * Math.max(0.2, hi - lo);
     return t > 0.4 ? t : 0.4;
   }
@@ -570,7 +570,7 @@
     const zufall = typeof rnd === "function" ? rnd : Math.random;
     const live = clamp012(lebendigkeit);
     const r = Number(zufall());
-    const pRuhe = 0.58 - live * 0.36;
+    const pRuhe = 0.68 - live * 0.36;
     const pSacc = pRuhe + 0.22 + live * 0.12;
     let art = "ruhe";
     if (r < pRuhe) art = "ruhe";
@@ -616,8 +616,8 @@
     const s = Number(seed) || 0;
     const zeit = Number(t) || 0;
     return {
-      gx: 0.04 * Math.sin(zeit * 0.31 + s),
-      gy: 0.026 * Math.sin(zeit * 0.22 + s * 1.3)
+      gx: 0.028 * Math.sin(zeit * 0.31 + s),
+      gy: 0.018 * Math.sin(zeit * 0.22 + s * 1.3)
     };
   }
   function blickZumPunkt(x, y, w, h) {
@@ -1649,6 +1649,15 @@
       "hint.hear": "tap me to hear me",
       "hint.forget": "Don't forget",
       "hint.demo": "Paper bin",
+      "hint.corner": "Hold the top corner, or tap five times.",
+      "welcome.demo": "Start the demo",
+      "welcome.intro": "Introduction",
+      "intro.1": "I want this face to retire the tiles.",
+      "intro.2": "A house run like KNX or Loxone should feel alive, not just switched.",
+      "intro.3": "That needs a local link, a little learning, and a screen that stays simple.",
+      "intro.4": "Voice and a few small gestures are the direction. This build does not listen yet.",
+      "intro.5": "It should only speak up when something fits, and not take itself too seriously.",
+      "intro.6": "Later it may change automations and think a step ahead. Not in this version.",
       "preview.summary": "Reactions",
       "preview.help": "A quiet list for trying each reaction. The first tap on the face unlocks the sound.",
       "cmd.help": "A script entity, or a service and a target, such as script.eye_music_on or light.turn_on/light.living_room.",
@@ -1961,6 +1970,15 @@
       "hint.hear": "tipp mich an, dann h\xF6rst du mich",
       "hint.forget": "Nicht vergessen",
       "hint.demo": "Papiertonne",
+      "hint.corner": "Oben links halten, oder f\xFCnfmal tippen.",
+      "welcome.demo": "Demo starten",
+      "welcome.intro": "Einf\xFChrung",
+      "intro.1": "Ich m\xF6chte mit diesem Gesicht die Kacheln loswerden.",
+      "intro.2": "Ein Haus wie mit KNX oder Loxone soll lebendig wirken, nicht nur schalten.",
+      "intro.3": "Daf\xFCr braucht es die lokale Anbindung, ein bisschen Lernen, und eine einfache Fl\xE4che.",
+      "intro.4": "Stimme und ein paar kleine Gesten sind die Richtung. Diese Fassung h\xF6rt noch nicht zu.",
+      "intro.5": "Es soll nur etwas sagen, wenn es passt, und sich nicht zu wichtig nehmen.",
+      "intro.6": "Sp\xE4ter kann es Automationen \xE4ndern und einen Schritt vorausdenken. Noch nicht hier.",
       "preview.summary": "Reaktionen",
       "preview.help": "Eine stille Liste, um jede Reaktion zu pr\xFCfen. Der erste Tipp auf das Gesicht schaltet den Ton frei.",
       "cmd.help": "Eine Skript-Entity oder ein Dienst mit Ziel, zum Beispiel script.eye_music_on oder light.turn_on/light.living_room.",
@@ -2314,7 +2332,7 @@
     reminderAckScript: "script.eye_hinweis_quittieren",
     kamera: "",
     ton: true,
-    lebendigkeit: 0.7,
+    lebendigkeit: 0.42,
     lautstaerke: 0.8,
     label: false,
     caption: true,
@@ -2484,7 +2502,7 @@
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
-    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.7);
+    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
     if ("lautstaerke" in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
@@ -2971,8 +2989,17 @@
       this.R = H / 2;
       this.bold = !!(opt && opt.bold);
       this.cheap = !!(opt && opt.cheap) || this.bold;
+      this.flat = !!(opt && opt.flat);
       const basis = this.bold ? BOLD : LOOK;
-      this.look = opt && opt.cube ? __spreadProps(__spreadValues({}, basis), { CORNER: 0, RING_TAU: 0, RING_LINE: 0, RING_LINE_W: 0, FLOOR: 0, RIM: 0 }) : basis;
+      this.look = opt && (opt.cube || opt.flat) ? __spreadProps(__spreadValues({}, basis), { CORNER: 0, RING_TAU: 0, RING_LINE: 0, RING_LINE_W: 0, FLOOR: 0, RIM: 0, VIGNETTE: 0, SHEEN: 0, BG_IN: [0, 0, 0], BG_OUT: [0, 0, 0] }) : basis;
+      if (this.flat) {
+        this.gq = 4;
+        if (!this.cheap) {
+          this.glow = canvas(Math.ceil(W / this.gq), Math.ceil(H / this.gq));
+          this.small = canvas(this.glow.width, this.glow.height);
+        }
+        return;
+      }
       const q = this.cheap || W * H > 15e5 ? 2 : 1, w = Math.round(W / q), h = Math.round(H / q), L2 = this.look, A = this.aspect;
       this.bg = canvas(w, h);
       this.mask = canvas(w, h);
@@ -3881,9 +3908,7 @@
       this.cv.width = W;
       this.cv.height = H;
       if (this.mode === "2d") {
-        const side = Math.max(1, Math.min(W, H));
-        this.szene2d = new Szene2D(side, side, { cheap: !!this.sparsam, cube: true });
-        this.cubeFrame = document.createElement("canvas");
+        this.szene2d = new Szene2D(W, H, { cheap: !!this.sparsam, flat: true });
       } else if (this.mode === "vollbild") {
         this.szene2d = new Szene2D(W, H, { cheap: true, bold: true });
       }
@@ -3903,6 +3928,10 @@
       if (o.zustand) this.lichtZustand = o.zustand;
       if ("rgb" in o) this.lichtRgb = o.rgb && o.rgb.length ? o.rgb : null;
       if ("alarmStark" in o) this.alarmStark = o.alarmStark !== false;
+      if ("pegel" in o) {
+        const n = Number(o.pegel);
+        this.lichtPegel = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+      }
     }
     // Screen-edge light under the eyes. Bold only flashes it while a tap is acknowledged.
     // The name "alarm" is the red rim, and only while the state is angry. Every other name is the 1.4.3 Quiet or Lively field.
@@ -3935,8 +3964,10 @@
       const frameFn = this.lichtProfil === "lebhaft" ? lebhaftFrame : ruhigFrame;
       frameFn(this.lichtCtx, this.lichtFeld, this.lichtMaschine, now, this.lichtT);
       const ctx = this.ctx;
+      const pegel = this.lichtPegel == null ? 1 : this.lichtPegel;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = pegel;
       ctx.drawImage(this.lichtCv, 0, 0, W, H);
       ctx.restore();
     }
@@ -3948,7 +3979,7 @@
       ctx.save();
       try {
         if (this.mode === "led") this.drawLed(pose, ring);
-        else if (this.mode === "2d") this.drawCube(pose, ring);
+        else if (this.mode === "2d") this.drawFlach(pose, ring);
         else if (this.mode === "vollbild") {
           this.szene2d.render(ctx, pose, [ring[0], 0, null], this.previewPx());
           if (this.lichtZustand === "alarm") this.zeichneAlarm(this.lichtRgb || ring && ring[0]);
@@ -4033,7 +4064,8 @@
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
     }
-    drawCube(pose, ring) {
+    // Eyes on a black screen. The only colour is the screen-edge glow, drawn afterwards.
+    drawFlach(pose, ring) {
       const ctx = this.ctx;
       const W = this.cv.width, H = this.cv.height;
       ctx.save();
@@ -4041,18 +4073,8 @@
       ctx.globalAlpha = 1;
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, W, H);
-      const box = this.previewPx();
-      if (!box) {
-        const side = this.szene2d.W;
-        const frame = this.cubeFrame;
-        if (frame.width !== side || frame.height !== side) {
-          frame.width = side;
-          frame.height = side;
-        }
-        this.szene2d.render(frame.getContext("2d"), pose, [ring[0], 0, null], null, false);
-        ctx.drawImage(frame, (W - side) / 2, (H - side) / 2);
-      } else this.szene2d.render(ctx, pose, [ring[0], 0, null], box, true);
       ctx.restore();
+      this.szene2d.render(ctx, pose, [ring[0], 0, null], this.previewPx(), true);
       const farbe = this.lichtRgb || (this.lichtZustand === "schlafen" ? null : ring && ring[0]);
       this.zeichneLicht(this.lichtZustand, farbe);
     }
@@ -4874,15 +4896,6 @@
     }
     return a > 1 ? 1 : a;
   }
-  function scheinFarbe(alarm, rgb) {
-    if (alarm) return "rgba(255, 18, 8, 0.88)";
-    const c = rgb && rgb.length >= 3 ? rgb : [255, 106, 0];
-    const r = c[0] | 0;
-    const g = c[1] | 0;
-    const b = c[2] | 0;
-    if (r > 200 && g < 60 && b < 60) return "rgba(255, 106, 0, 0.8)";
-    return "rgba(" + r + ", " + g + ", " + b + ", 0.8)";
-  }
   function createStimme(opt) {
     const o = opt || {};
     const rnd = typeof o.rnd === "function" ? o.rnd : Math.random;
@@ -4952,6 +4965,73 @@
     };
   }
 
+  // web/empfang.js
+  var INTRO_KEYS = ["intro.1", "intro.2", "intro.3", "intro.4", "intro.5", "intro.6"];
+  var INTRO_MS = 3400;
+  var EMPFANG_REIHE = [
+    "hallo",
+    "curious",
+    "thinking",
+    "nod",
+    "happy",
+    "wake",
+    "reminder",
+    "shy",
+    "sad",
+    "angry",
+    "relieved",
+    "sleepy",
+    "content"
+  ];
+  var EMPFANG_MS = 3200;
+  var FENSTER_MS = 2200;
+  function paramsVon(params) {
+    return params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
+  }
+  function ohneHaus(konfig, ort) {
+    const host = ort && (ort.hostname || ort.host) || "";
+    if (istDemoHost(host)) return true;
+    const url = konfig && String(konfig.haUrl || "").trim();
+    const token = konfig && String(konfig.haToken || "").trim();
+    return !url && !token;
+  }
+  function sollWillkommen(konfig, ort, params) {
+    const p = paramsVon(params);
+    if (p.get("demo") === "1" || p.get("tour") || p.get("ablauf")) return false;
+    if (p.get("intro") === "1" || p.get("lauf") === "1") return false;
+    if (p.get("state") || p.get("zustand") || p.get("reaction") || p.get("reaktion")) return false;
+    if (p.get("sequence") || p.get("sequenz")) return false;
+    if (p.get("ha") === "mock") return false;
+    if (p.get("welcome") === "0") return false;
+    return ohneHaus(konfig, ort);
+  }
+  function empfangSchritt(index) {
+    const n = EMPFANG_REIHE.length;
+    const i = (index % n + n) % n;
+    const kurz = EMPFANG_REIHE[i];
+    return { index: i, kurz, ms: EMPFANG_MS, naechster: (i + 1) % n };
+  }
+  function tippFenster(zeiten, now, fenster) {
+    const grenze = fenster > 0 ? fenster : FENSTER_MS;
+    const t = Number(now) || 0;
+    const offen2 = [];
+    const liste2 = zeiten || [];
+    for (let i = 0; i < liste2.length; i++) if (t - liste2[i] < grenze) offen2.push(liste2[i]);
+    offen2.push(t);
+    return { zeiten: offen2.length >= 5 ? [] : offen2, settings: offen2.length >= 5 };
+  }
+  function eckeHinweisFaellig(gesehen, tipps) {
+    return !gesehen && tipps >= 2;
+  }
+  function randPegel(art, puls, atem) {
+    const u = Math.max(0, Math.min(1, Number(atem) || 0));
+    const p = Math.max(0, Math.min(1, Number(puls) || 0));
+    if (art === "angry") return 1;
+    if (art === "schlafen") return 0.04 + u * 0.05;
+    if (art === "idle") return Math.min(0.85, 0.06 + u * 0.07 + p * 0.7);
+    return Math.min(0.9, 0.12 + u * 0.06 + p * 0.72);
+  }
+
   // web/app.js
   function __legacyBoot() {
     return __async(this, null, function* () {
@@ -5011,12 +5091,24 @@
       let lastDraw = 0;
       let reaktion = null;
       let scheinPulse = [];
-      let scheinDeckkraft = -1;
-      let scheinZuletzt = "";
       let stoerungAktiv = false;
       let druck = null;
       let langTimer = 0;
+      let modus = "normal";
+      let laufIndex = 0;
+      let laufSeit = 0;
+      let introIndex = 0;
+      let introSeit = 0;
+      let introTimer = 0;
+      let tippZeiten = [];
+      let tippGesamt = 0;
+      let eckeHinweisGesehen = false;
       const LANG_MS = 720;
+      const ECKE_HINT_KEY = "eye_ui_hint_ecke";
+      try {
+        eckeHinweisGesehen = localStorage.getItem(ECKE_HINT_KEY) === "1";
+      } catch (e) {
+      }
       function el(id) {
         return document.getElementById(id);
       }
@@ -5031,7 +5123,7 @@
       function zielId(node) {
         let n = node;
         while (n && n !== document) {
-          if (n.id === "ecke" || n.id === "hinweis") return n.id;
+          if (n.id === "ecke" || n.id === "hinweis" || n.id === "wahl" || n.id === "wahl-demo" || n.id === "wahl-intro") return n.id;
           n = n.parentNode;
         }
         return "";
@@ -5119,21 +5211,8 @@
         const s = staerke(t2, reaktion.rend.dur) * reaktion.staerke;
         return mische(pose, extra, s, reaktion.blick);
       }
-      function setzeSchein(puls, alarm, rgb) {
-        const node = el("schein");
-        if (!node) return;
-        const farbe = scheinFarbe(!!alarm, rgb);
-        if (farbe !== scheinZuletzt) {
-          scheinZuletzt = farbe;
-          node.style.boxShadow = "inset 0 0 90px 12px " + farbe;
-        }
-        const deckung = puls > 0.02 ? Math.max(0, Math.min(0.72, puls * 0.7)) : 0;
-        if (Math.abs(deckung - scheinDeckkraft) < 0.02) return;
-        scheinDeckkraft = deckung;
-        node.style.opacity = String(deckung);
-      }
       function istStoerung() {
-        if (schauLaeuft || haStatus === "mock") return false;
+        if (modus === "schlafwahl" || modus === "intro" || modus === "lauf" || schauLaeuft || haStatus === "mock") return false;
         if (haStatus === "fehler" || haStatus === "auth_ungueltig" || haStatus === "getrennt") return true;
         if (haMeldung === "tokenMissing" && konfig.haUrl) return true;
         if (haMeldung === "tokenRejected" || haMeldung === "connectFailed" || haMeldung === "connectionTrouble") return true;
@@ -5348,8 +5427,9 @@
       function syncHearHint() {
         const node = el("hear-hint");
         if (!node) return;
-        node.hidden = !!audioFrei;
-        if (!audioFrei) node.textContent = t("hint.hear");
+        const ruhig = modus === "schlafwahl" || modus === "intro" || modus === "lauf";
+        node.hidden = !!audioFrei || ruhig;
+        if (!node.hidden) node.textContent = t("hint.hear");
       }
       function syncUhr() {
         const node = el("uhr");
@@ -5365,13 +5445,13 @@
         const node = el("dim");
         if (!node) return;
         let ziel = helligkeit(waechter.ruhe(), konfig.schlafSekunden, konfig);
-        if (waechter.schlaeft) ziel = Math.min(ziel, konfig.dimStufe || 0.3);
-        if (schauLaeuft || hinweis.offen || tuerAuf) ziel = 1;
+        if (waechter.schlaeft && modus === "normal") ziel = Math.min(ziel, konfig.dimStufe || 0.3);
+        if (schauLaeuft || hinweis.offen || tuerAuf || modus === "schlafwahl" || modus === "intro" || modus === "lauf") ziel = 1;
         dimIst += (ziel - dimIst) * Math.min(1, (dt || 0.016) * 2);
         node.style.opacity = String(Math.max(0, Math.min(0.92, 1 - dimIst)));
       }
       function syncPause() {
-        const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf);
+        const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === "schlafwahl" || modus === "intro" || modus === "lauf");
         if (pausieren === pauseAn) return;
         pauseAn = pausieren;
         waechter.setPause(pausieren);
@@ -5408,14 +5488,17 @@
         if (!schauLaeuft) return;
         schauLaeuft = false;
         if (demoMusik.playing) demoMusik.stop();
-        waechter.setPause(false);
-        pauseAn = !!(hinweis.offen || tuerAuf);
         if (hinweisQuelle === "demo") {
           hinweis.quittieren();
           const node = el("hinweis");
           if (node) node.hidden = true;
         }
-        wendeZustand("idle", { ton: false, erzwingen: true });
+        if (ohneHaus(konfig, location)) zeigeSchlafWahl();
+        else {
+          waechter.setPause(false);
+          pauseAn = !!(hinweis.offen || tuerAuf);
+          wendeZustand("idle", { ton: false, erzwingen: true });
+        }
       }
       function eckLos() {
         if (eckTimer) clearTimeout(eckTimer);
@@ -5444,6 +5527,7 @@
         if (ha && ha.nudge) ha.nudge();
       }
       function pruefeStoerung() {
+        if (modus === "schlafwahl" || modus === "intro" || modus === "lauf") return;
         const an = istStoerung();
         if (!an) {
           stoerungAktiv = false;
@@ -5453,8 +5537,173 @@
         stoerungAktiv = true;
         spieleReaktion(reaktionen.aus(FEHLER_POOL), { ton: true, staerke: 0.55, gain: 0.45 });
       }
+      function versteckeWahl() {
+        const wahl = el("wahl");
+        if (wahl) wahl.hidden = true;
+      }
+      function versteckeIntro() {
+        if (introTimer) clearTimeout(introTimer);
+        introTimer = 0;
+        const node = el("intro");
+        if (!node) return;
+        node.className = "";
+        node.hidden = true;
+      }
+      function zeigeSchlafWahl() {
+        modus = "schlafwahl";
+        schauLaeuft = false;
+        versteckeIntro();
+        const wahl = el("wahl");
+        const demo = el("wahl-demo");
+        const intro = el("wahl-intro");
+        if (demo) demo.textContent = t("welcome.demo");
+        if (intro) intro.textContent = t("welcome.intro");
+        if (wahl) wahl.hidden = false;
+        waechter.setPause(true);
+        pauseAn = true;
+        reaktion = null;
+        wendeZustand("schlafen", { ton: false, erzwingen: true });
+        syncHearHint();
+      }
+      function abbrechenVorfuehrung() {
+        if (demoMusik.playing) demoMusik.stop();
+        schauLaeuft = false;
+        if (hinweis.offen) {
+          hinweis.quittieren();
+          const note = el("hinweis");
+          if (note) note.hidden = true;
+        }
+        versteckeIntro();
+        reaktion = null;
+        if (ohneHaus(konfig, location)) zeigeSchlafWahl();
+        else {
+          modus = "normal";
+          versteckeWahl();
+          waechter.setPause(!!(hinweis.offen || tuerAuf));
+          pauseAn = !!(hinweis.offen || tuerAuf);
+          wendeZustand("idle", { ton: false, erzwingen: true });
+          syncHearHint();
+        }
+      }
+      function sprungLauf(schritt) {
+        if (schritt.kurz === "wake") {
+          starteWecken(WAKE_VARIANTS[schritt.index % WAKE_VARIANTS.length]);
+          return;
+        }
+        if (schritt.kurz === "reminder") {
+          zeigeHinweis(t("hint.demo"), "demo");
+          return;
+        }
+        if (hinweis.offen && hinweisQuelle === "demo") {
+          hinweis.quittieren();
+          const note = el("hinweis");
+          if (note) note.hidden = true;
+        }
+        if (schritt.kurz === "angry") {
+          wendeZustand("angry", { ton: true, erzwingen: true });
+          return;
+        }
+        if (schritt.kurz === "relieved") {
+          wendeZustand("idle", { ton: false, erzwingen: true });
+          spieleReaktion("relieved", { ton: true, erzwingen: true });
+          return;
+        }
+        if (istReaktion(schritt.kurz)) {
+          if (bildKurz !== "idle") wendeZustand("idle", { ton: false, erzwingen: true });
+          spieleReaktion(schritt.kurz, { ton: true, erzwingen: true });
+          return;
+        }
+        wendeZustand(schritt.kurz, { ton: true, erzwingen: true });
+      }
+      function starteLauf() {
+        modus = "lauf";
+        versteckeWahl();
+        versteckeIntro();
+        waechter.beruehrt();
+        waechter.setPause(true);
+        pauseAn = true;
+        laufIndex = 0;
+        laufSeit = performance.now();
+        sprungLauf(empfangSchritt(0));
+        syncHearHint();
+      }
+      function tickLauf(now) {
+        if (modus !== "lauf") return;
+        const schritt = empfangSchritt(laufIndex);
+        if (now - laufSeit < schritt.ms) return;
+        laufIndex = schritt.naechster;
+        laufSeit = now;
+        sprungLauf(empfangSchritt(laufIndex));
+      }
+      function zeigeIntroZeile(index) {
+        const node = el("intro");
+        const text = el("intro-text");
+        if (!node || !text) return;
+        text.textContent = t(INTRO_KEYS[index]);
+        node.hidden = false;
+        node.className = "";
+        if (introTimer) clearTimeout(introTimer);
+        introTimer = setTimeout(() => {
+          node.className = "is-on";
+        }, 40);
+      }
+      function starteIntro() {
+        modus = "intro";
+        versteckeWahl();
+        waechter.beruehrt();
+        waechter.setPause(true);
+        pauseAn = true;
+        wendeZustand("idle", { ton: false, erzwingen: true });
+        introIndex = 0;
+        introSeit = performance.now();
+        zeigeIntroZeile(0);
+        syncHearHint();
+      }
+      function tickIntro(now) {
+        if (modus !== "intro") return;
+        if (now - introSeit < INTRO_MS) return;
+        introIndex += 1;
+        introSeit = now;
+        if (introIndex >= INTRO_KEYS.length) {
+          abbrechenVorfuehrung();
+          return;
+        }
+        const node = el("intro");
+        if (node) node.className = "";
+        if (introTimer) clearTimeout(introTimer);
+        introTimer = setTimeout(() => {
+          if (modus === "intro") zeigeIntroZeile(introIndex);
+        }, 380);
+      }
+      function merkeTipp(now) {
+        const z = tippFenster(tippZeiten, now, 2200);
+        tippZeiten = z.zeiten;
+        tippGesamt += 1;
+        if (z.settings) {
+          location.href = "settings.html";
+          return true;
+        }
+        if (eckeHinweisFaellig(eckeHinweisGesehen, tippGesamt) && modus === "normal") {
+          eckeHinweisGesehen = true;
+          try {
+            localStorage.setItem(ECKE_HINT_KEY, "1");
+          } catch (e) {
+          }
+          const node = el("ecke-hint");
+          if (node) {
+            node.hidden = false;
+            node.textContent = t("hint.corner");
+            setTimeout(() => {
+              node.hidden = true;
+            }, 6500);
+          }
+        }
+        return false;
+      }
       function frame(now) {
         tickSchau(now);
+        tickLauf(now);
+        tickIntro(now);
         const dt = Math.min(0.1, (now - last) / 1e3);
         last = now;
         syncPause();
@@ -5474,16 +5723,17 @@
         if (tuerAuf || bildKurz === "angry") lichtKurz = "angry";
         else if (hinweis.offen || now < wachBis) lichtKurz = "verstanden";
         const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== "normal" });
+        const puls = pulsHuelle(now, scheinPulse);
+        const atem = 0.5 + 0.5 * Math.sin(now / 1e4);
+        const lichtArt = tuerAuf || bildKurz === "angry" ? "angry" : modus === "schlafwahl" || bildKurz === "schlafen" ? "schlafen" : bildKurz === "idle" ? "idle" : bildKurz;
         renderer.setLicht({
-          profil: "lebhaft",
+          profil: "ruhig",
           zustand: befehl.name,
           rgb: befehl.rgb,
-          alarmStark: konfig.alarmStaerke !== "normal"
+          alarmStark: konfig.alarmStaerke !== "normal",
+          pegel: randPegel(lichtArt, puls, atem)
         });
         const ring = befehl.alarm ? [befehl.rgb, 1, null, "angry"] : augen.ring || [[255, 106, 0], 0.2, null];
-        const puls = pulsHuelle(now, scheinPulse);
-        if (puls > 0.02 && ring && !befehl.alarm) ring[1] = Math.min(1, (ring[1] || 0) + puls * 0.28);
-        setzeSchein(puls, !!befehl.alarm, befehl.alarm ? befehl.rgb : ring && ring[0]);
         renderer.render(pose, ring);
         requestAnimationFrame(frame);
       }
@@ -5494,8 +5744,11 @@
       const startState = param("state", "zustand");
       const sequence = param("sequence", "sequenz");
       const reaktionStart = param("reaction", "reaktion");
+      const willkommen = sollWillkommen(konfig, location, q);
       if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-      if (param("tour", "ablauf") || konfig.demo && !startState && !sequence && !reaktionStart) starteSchau();
+      if (param("intro") === "1" && !startState && !sequence) starteIntro();
+      else if (param("lauf") === "1" && !startState && !sequence) starteLauf();
+      else if (param("tour", "ablauf") || param("demo") === "1" && !startState && !sequence && !reaktionStart) starteSchau();
       else if (reaktionStart && istReaktion(reaktionStart)) {
         reaktionHoren = reaktionStart;
         wendeZustand("idle", { ton: false, erzwingen: true });
@@ -5515,7 +5768,7 @@
           schritt();
           setInterval(schritt, jede);
         }, 400);
-      }
+      } else if (willkommen) zeigeSchlafWahl();
       window.addEventListener("resize", () => renderer.resize());
       window.addEventListener("online", () => {
         if (ha && ha.nudge) ha.nudge();
@@ -5529,6 +5782,10 @@
       window.addEventListener("mousedown", ersterKontakt, true);
       onZeiger(el("hinweis"), "up", () => {
         ersterKontakt();
+        if (modus === "lauf" || modus === "intro") {
+          abbrechenVorfuehrung();
+          return;
+        }
         quittiereHinweis();
       });
       onZeiger(el("ecke"), "down", (e) => {
@@ -5554,11 +5811,24 @@
           location.href = "settings.html";
         });
       }
+      onZeiger(el("wahl-demo"), "up", () => {
+        ersterKontakt();
+        starteLauf();
+      });
+      onZeiger(el("wahl-intro"), "up", () => {
+        ersterKontakt();
+        starteIntro();
+      });
       onZeiger(document.body, "down", (e) => {
         ersterKontakt();
         if (zielId(e.target)) return;
-        if (schauLaeuft) {
-          stoppeSchau();
+        if (modus === "lauf" || modus === "intro" || schauLaeuft) {
+          if (schauLaeuft) stoppeSchau();
+          if (modus === "lauf" || modus === "intro") abbrechenVorfuehrung();
+          return;
+        }
+        if (modus === "schlafwahl") {
+          merkeTipp(performance.now());
           return;
         }
         if (tuerAuf || bildKurz === "angry") {
@@ -5595,6 +5865,7 @@
         langTimer = 0;
         druck = null;
         if (lang || moved || zielId(e.target)) return;
+        if (merkeTipp(performance.now())) return;
         const id = stupser.tipp(performance.now());
         const live = konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit;
         if (id === "grumpy" || live >= 0.12) {

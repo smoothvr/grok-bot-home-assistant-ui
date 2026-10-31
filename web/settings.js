@@ -63,11 +63,9 @@ function fuellen() {
   const ton = el('ton');
   if (ton) ton.checked = !!konfig.ton;
   setWert('lautstaerke', String(Math.round((konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke) * 100)));
-  setWert('lebendigkeit', String(Math.round((konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit) * 100)));
+  setWert('lebendigkeit', String(Math.round((konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit) * 100)));
   const uhr = el('uhr-an');
   if (uhr) uhr.checked = !!konfig.uhr;
-  const demo = el('demo-an');
-  if (demo) demo.checked = !!konfig.demo;
   const alarm = el('alarm-staerke');
   if (alarm) alarm.value = konfig.alarmStaerke === 'normal' ? 'normal' : 'stark';
   const sprache = el('sprache');
@@ -101,7 +99,6 @@ function uebernehmen(k) {
   k.lautstaerke = Math.max(0, Math.min(1, (Math.round(Number(lies('lautstaerke'))) || 0) / 100));
   k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies('lebendigkeit'))) || 0) / 100));
   k.uhr = !!(el('uhr-an') && el('uhr-an').checked);
-  k.demo = !!(el('demo-an') && el('demo-an').checked);
   const gewaehlt = lies('sprache');
   k.lang = gewaehlt === 'auto' ? '' : gewaehlt;
   k.alarmStaerke = lies('alarm-staerke') === 'normal' ? 'normal' : 'stark';

@@ -6,7 +6,7 @@ Help for the wall tablet. Settings are a separate page. The face itself stays cl
 
 The page is German or English. It follows the browser language until a saved choice, `config.local.json`, or `?lang=` overrides it.
 
-There is one look. The eyes are soft, and a living edge light follows every state. Red is only for angry. Cube, Fortune, and Bold are not switched in this release.
+There is one look. The eyes are flat on black, full-screen. There is no cube and no frame around them. A soft glow follows the screen edge. Idle is a very slow, low breath. A reaction lifts it with the sound, then it settles. Red is only for angry. Cube, Fortune, and Bold are not switched in this release.
 
 Sleep is in minutes. `0` keeps the eyes awake. The page dims to 30 percent after 60 seconds of quiet (`dimAfter`, `dimLevel`). While the eyes sleep, the screen stays dim and the bottom line reads “Zzzzzz...”. The clock is off unless you turn it on. It sits clear of the corner you hold for settings. iOS draws the status bar itself. This page cannot hide that bar in Safari or on the iOS 10 home screen.
 
@@ -64,9 +64,9 @@ A reminder from `input_text.eye_hinweis` wakes the face, shows “Don't forget�
 
 <h2 id="demo">Demo</h2>
 
-Demo mode loops the emotions and the reactions (surprised, curious, a nod, happy, shy, confused, sad, relieved, sleepy, grumpy, content, and the others), ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. `?demo=1` forces it. `?demo=0` leaves a public page idle. On the public demo host no token is ever stored.
+A public page, and a fresh page with no Home Assistant address or token, opens asleep. Two lines offer the demo and a short introduction. The demo cycles what the face can do, including a wake, a reminder, and the door, then loops. A tap returns to sleep. The introduction is a few lines over the eyes. It talks about dropping tiles and a living house. Voice is named as the direction. This build does not listen. A configured install starts in the normal face. Settings links to the same demo and introduction.
 
-Settings keeps a collapsed Reactions list for trying one reaction at a time. `settings.html?preview=1` opens it. `index.html?demo=0&reaction=curious` plays that reaction. The first tap unlocks the beep.
+`?demo=1` still runs the longer tour, ends on music for 30 seconds, then starts again until a tap. `?lauf=1` is the short loop. `?intro=1` is the introduction. `?welcome=0` skips the sleeping start. On the public demo host no token is ever stored.
 
 <h2 id="phone">Phone and tablet</h2>
 

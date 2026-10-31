@@ -27,3 +27,14 @@ Orbit Drift is an original loop for the music state when no Home Assistant media
 ## Idea
 
 The README credits the initial idea to a public post: <https://x.com/Texas_Twins_Dad/status/2114196344025878632>. No text, image, or code from that post is included here.
+
+## Eye references, not copied
+
+These public repositories were looked at while settling the flat eyes. No file from them was copied into this tree.
+
+- [nasawz/GrokBot](https://github.com/nasawz/GrokBot) is BSD-3-Clause. It is a different program (Dart). Nothing from it is included, so the BSD notice is not required here.
+- [iduu/grokbot-animation](https://github.com/iduu/grokbot-animation) has no license file. That means all rights reserved. It was used as a visual reference only.
+- [ArvinYin1/grokbot-animation-anatomy](https://github.com/ArvinYin1/grokbot-animation-anatomy) describes itself as MIT, and also says its player and recipe data are a study port of the Grok Bot app, published for study and removable on request. That engine and that data were not copied.
+
+The eyes in this repository stay the original geometry in `web/augen.js`.
+

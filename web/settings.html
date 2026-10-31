@@ -24,6 +24,8 @@
   }
   .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
   .check input { width: auto; }
+  p.ruhig { margin: 16px 0 0; }
+  p.ruhig a { color: #b7aea3; text-decoration: none; }
   button, .back {
     display: inline-block; margin-top: 18px; margin-right: 8px; padding: 10px 16px;
     border-radius: 999px; border: 0; background: #f4efe8; color: #111; font: inherit;
@@ -86,9 +88,10 @@
     <label for="lautstaerke" data-i18n="display.volume">Volume</label>
     <input id="lautstaerke" type="range" min="0" max="100" step="1" value="80">
     <label for="lebendigkeit" data-i18n="display.liveliness">Liveliness</label>
-    <input id="lebendigkeit" type="range" min="0" max="100" step="1" value="70">
+    <input id="lebendigkeit" type="range" min="0" max="100" step="1" value="42">
     <label class="check"><input id="uhr-an" type="checkbox"> <span data-i18n="display.clock">Clock</span></label>
-    <label class="check"><input id="demo-an" type="checkbox"> <span data-i18n="demo.link">Demo</span></label>
+    <p class="ruhig"><a id="link-demo" href="index.html?lauf=1" data-i18n="welcome.demo">Demo starten</a></p>
+    <p class="ruhig"><a id="link-intro" href="index.html?intro=1" data-i18n="welcome.intro">Einführung</a></p>
     <p id="form-fehler"></p>
     <button type="submit" data-i18n="action.save">Save</button>
     <a class="back" href="index.html" data-i18n="set.back">Back to the face</a>
@@ -99,7 +102,7 @@
     <div id="preview-list"></div>
   </details>
   <footer class="fuss">
-    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.1.0</a>
+    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.2.0</a>
     <a class="logo-only" href="https://www.herrvonundzu.eu/digitalisierung-automatisierung-4">
       <img src="assets/brand/hvuz-logo.jpg" width="22" height="22" alt="HVUZ">
     </a>

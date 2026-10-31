@@ -19,13 +19,16 @@ import { demoSchritt } from './demo.js';
 import { createDemoMusic } from './demotrack.js';
 import { helligkeit, tuerOffen } from './dimmen.js';
 import { captionLine, resolveLocale, translate } from './strings.js';
-import { anwesend, createWecker } from './wache.js';
+import { anwesend, createWecker, WAKE_VARIANTS } from './wache.js';
 import { ackAnHa, createHinweis } from './hinweis.js';
 import { blickZumPunkt } from './blick.js';
 import {
   ACK_POOL, FEHLER_POOL, HINWEIS_POOL, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
 } from './reaktionen.js';
-import { createStimme, pulsHuelle, scheinFarbe } from './stimme.js';
+import { createStimme, pulsHuelle } from './stimme.js';
+import {
+  INTRO_KEYS, INTRO_MS, eckeHinweisFaellig, empfangSchritt, ohneHaus, randPegel, sollWillkommen, tippFenster,
+} from './empfang.js';
 
 const q = new URLSearchParams(location.search);
 const ON = await (await fetch('onsets.json')).json();
@@ -85,12 +88,21 @@ let last = performance.now();
 let lastDraw = 0;
 let reaktion = null;
 let scheinPulse = [];
-let scheinDeckkraft = -1;
-let scheinZuletzt = '';
 let stoerungAktiv = false;
 let druck = null;
 let langTimer = 0;
+let modus = 'normal';
+let laufIndex = 0;
+let laufSeit = 0;
+let introIndex = 0;
+let introSeit = 0;
+let introTimer = 0;
+let tippZeiten = [];
+let tippGesamt = 0;
+let eckeHinweisGesehen = false;
 const LANG_MS = 720;
+const ECKE_HINT_KEY = 'eye_ui_hint_ecke';
+try { eckeHinweisGesehen = localStorage.getItem(ECKE_HINT_KEY) === '1'; } catch { /* private mode */ }
 
 function el(id) { return document.getElementById(id); }
 function t(key) { return translate(locale, key); }
@@ -102,7 +114,7 @@ function param(name, alt) {
 function zielId(node) {
   let n = node;
   while (n && n !== document) {
-    if (n.id === 'ecke' || n.id === 'hinweis') return n.id;
+    if (n.id === 'ecke' || n.id === 'hinweis' || n.id === 'wahl' || n.id === 'wahl-demo' || n.id === 'wahl-intro') return n.id;
     n = n.parentNode;
   }
   return '';
@@ -197,22 +209,8 @@ function legeReaktion(pose) {
   return mische(pose, extra, s, reaktion.blick);
 }
 
-function setzeSchein(puls, alarm, rgb) {
-  const node = el('schein');
-  if (!node) return;
-  const farbe = scheinFarbe(!!alarm, rgb);
-  if (farbe !== scheinZuletzt) {
-    scheinZuletzt = farbe;
-    node.style.boxShadow = 'inset 0 0 90px 12px ' + farbe;
-  }
-  const deckung = puls > 0.02 ? Math.max(0, Math.min(0.72, puls * 0.7)) : 0;
-  if (Math.abs(deckung - scheinDeckkraft) < 0.02) return;
-  scheinDeckkraft = deckung;
-  node.style.opacity = String(deckung);
-}
-
 function istStoerung() {
-  if (schauLaeuft || haStatus === 'mock') return false;
+  if (modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf' || schauLaeuft || haStatus === 'mock') return false;
   if (haStatus === 'fehler' || haStatus === 'auth_ungueltig' || haStatus === 'getrennt') return true;
   if (haMeldung === 'tokenMissing' && konfig.haUrl) return true;
   if (haMeldung === 'tokenRejected' || haMeldung === 'connectFailed' || haMeldung === 'connectionTrouble') return true;
@@ -436,8 +434,9 @@ function setStatus(s) {
 function syncHearHint() {
   const node = el('hear-hint');
   if (!node) return;
-  node.hidden = !!audioFrei;
-  if (!audioFrei) node.textContent = t('hint.hear');
+  const ruhig = modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf';
+  node.hidden = !!audioFrei || ruhig;
+  if (!node.hidden) node.textContent = t('hint.hear');
 }
 
 function syncUhr() {
@@ -455,14 +454,14 @@ function syncDim(dt) {
   const node = el('dim');
   if (!node) return;
   let ziel = helligkeit(waechter.ruhe(), konfig.schlafSekunden, konfig);
-  if (waechter.schlaeft) ziel = Math.min(ziel, konfig.dimStufe || 0.3);
-  if (schauLaeuft || hinweis.offen || tuerAuf) ziel = 1;
+  if (waechter.schlaeft && modus === 'normal') ziel = Math.min(ziel, konfig.dimStufe || 0.3);
+  if (schauLaeuft || hinweis.offen || tuerAuf || modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf') ziel = 1;
   dimIst += (ziel - dimIst) * Math.min(1, (dt || 0.016) * 2);
   node.style.opacity = String(Math.max(0, Math.min(0.92, 1 - dimIst)));
 }
 
 function syncPause() {
-  const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf);
+  const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf');
   if (pausieren === pauseAn) return;
   pauseAn = pausieren;
   waechter.setPause(pausieren);
@@ -503,14 +502,17 @@ function stoppeSchau() {
   if (!schauLaeuft) return;
   schauLaeuft = false;
   if (demoMusik.playing) demoMusik.stop();
-  waechter.setPause(false);
-  pauseAn = !!(hinweis.offen || tuerAuf);
   if (hinweisQuelle === 'demo') {
     hinweis.quittieren();
     const node = el('hinweis');
     if (node) node.hidden = true;
   }
-  wendeZustand('idle', { ton: false, erzwingen: true });
+  if (ohneHaus(konfig, location)) zeigeSchlafWahl();
+  else {
+    waechter.setPause(false);
+    pauseAn = !!(hinweis.offen || tuerAuf);
+    wendeZustand('idle', { ton: false, erzwingen: true });
+  }
 }
 
 function eckLos() {
@@ -543,6 +545,7 @@ function beiSicht() {
 }
 
 function pruefeStoerung() {
+  if (modus === 'schlafwahl' || modus === 'intro' || modus === 'lauf') return;
   const an = istStoerung();
   if (!an) {
     stoerungAktiv = false;
@@ -553,8 +556,175 @@ function pruefeStoerung() {
   spieleReaktion(reaktionen.aus(FEHLER_POOL), { ton: true, staerke: 0.55, gain: 0.45 });
 }
 
+function versteckeWahl() {
+  const wahl = el('wahl');
+  if (wahl) wahl.hidden = true;
+}
+
+function versteckeIntro() {
+  if (introTimer) clearTimeout(introTimer);
+  introTimer = 0;
+  const node = el('intro');
+  if (!node) return;
+  node.className = '';
+  node.hidden = true;
+}
+
+function zeigeSchlafWahl() {
+  modus = 'schlafwahl';
+  schauLaeuft = false;
+  versteckeIntro();
+  const wahl = el('wahl');
+  const demo = el('wahl-demo');
+  const intro = el('wahl-intro');
+  if (demo) demo.textContent = t('welcome.demo');
+  if (intro) intro.textContent = t('welcome.intro');
+  if (wahl) wahl.hidden = false;
+  waechter.setPause(true);
+  pauseAn = true;
+  reaktion = null;
+  wendeZustand('schlafen', { ton: false, erzwingen: true });
+  syncHearHint();
+}
+
+function abbrechenVorfuehrung() {
+  if (demoMusik.playing) demoMusik.stop();
+  schauLaeuft = false;
+  if (hinweis.offen) {
+    hinweis.quittieren();
+    const note = el('hinweis');
+    if (note) note.hidden = true;
+  }
+  versteckeIntro();
+  reaktion = null;
+  if (ohneHaus(konfig, location)) zeigeSchlafWahl();
+  else {
+    modus = 'normal';
+    versteckeWahl();
+    waechter.setPause(!!(hinweis.offen || tuerAuf));
+    pauseAn = !!(hinweis.offen || tuerAuf);
+    wendeZustand('idle', { ton: false, erzwingen: true });
+    syncHearHint();
+  }
+}
+
+function sprungLauf(schritt) {
+  if (schritt.kurz === 'wake') {
+    starteWecken(WAKE_VARIANTS[schritt.index % WAKE_VARIANTS.length]);
+    return;
+  }
+  if (schritt.kurz === 'reminder') {
+    zeigeHinweis(t('hint.demo'), 'demo');
+    return;
+  }
+  if (hinweis.offen && hinweisQuelle === 'demo') {
+    hinweis.quittieren();
+    const note = el('hinweis');
+    if (note) note.hidden = true;
+  }
+  if (schritt.kurz === 'angry') {
+    wendeZustand('angry', { ton: true, erzwingen: true });
+    return;
+  }
+  if (schritt.kurz === 'relieved') {
+    wendeZustand('idle', { ton: false, erzwingen: true });
+    spieleReaktion('relieved', { ton: true, erzwingen: true });
+    return;
+  }
+  if (istReaktion(schritt.kurz)) {
+    if (bildKurz !== 'idle') wendeZustand('idle', { ton: false, erzwingen: true });
+    spieleReaktion(schritt.kurz, { ton: true, erzwingen: true });
+    return;
+  }
+  wendeZustand(schritt.kurz, { ton: true, erzwingen: true });
+}
+
+function starteLauf() {
+  modus = 'lauf';
+  versteckeWahl();
+  versteckeIntro();
+  waechter.beruehrt();
+  waechter.setPause(true);
+  pauseAn = true;
+  laufIndex = 0;
+  laufSeit = performance.now();
+  sprungLauf(empfangSchritt(0));
+  syncHearHint();
+}
+
+function tickLauf(now) {
+  if (modus !== 'lauf') return;
+  const schritt = empfangSchritt(laufIndex);
+  if (now - laufSeit < schritt.ms) return;
+  laufIndex = schritt.naechster;
+  laufSeit = now;
+  sprungLauf(empfangSchritt(laufIndex));
+}
+
+function zeigeIntroZeile(index) {
+  const node = el('intro');
+  const text = el('intro-text');
+  if (!node || !text) return;
+  text.textContent = t(INTRO_KEYS[index]);
+  node.hidden = false;
+  node.className = '';
+  if (introTimer) clearTimeout(introTimer);
+  introTimer = setTimeout(() => { node.className = 'is-on'; }, 40);
+}
+
+function starteIntro() {
+  modus = 'intro';
+  versteckeWahl();
+  waechter.beruehrt();
+  waechter.setPause(true);
+  pauseAn = true;
+  wendeZustand('idle', { ton: false, erzwingen: true });
+  introIndex = 0;
+  introSeit = performance.now();
+  zeigeIntroZeile(0);
+  syncHearHint();
+}
+
+function tickIntro(now) {
+  if (modus !== 'intro') return;
+  if (now - introSeit < INTRO_MS) return;
+  introIndex += 1;
+  introSeit = now;
+  if (introIndex >= INTRO_KEYS.length) {
+    abbrechenVorfuehrung();
+    return;
+  }
+  const node = el('intro');
+  if (node) node.className = '';
+  if (introTimer) clearTimeout(introTimer);
+  introTimer = setTimeout(() => { if (modus === 'intro') zeigeIntroZeile(introIndex); }, 380);
+}
+
+function merkeTipp(now) {
+  const z = tippFenster(tippZeiten, now, 2200);
+  tippZeiten = z.zeiten;
+  tippGesamt += 1;
+  if (z.settings) {
+    location.href = 'settings.html';
+    return true;
+  }
+  if (eckeHinweisFaellig(eckeHinweisGesehen, tippGesamt) && modus === 'normal') {
+    eckeHinweisGesehen = true;
+    try { localStorage.setItem(ECKE_HINT_KEY, '1'); } catch { /* private mode */ }
+    const node = el('ecke-hint');
+    if (node) {
+      node.hidden = false;
+      node.textContent = t('hint.corner');
+      setTimeout(() => { node.hidden = true; }, 6500);
+    }
+  }
+  return false;
+}
+
 function frame(now) {
   tickSchau(now);
+  tickLauf(now);
+  tickIntro(now);
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   syncPause();
@@ -574,18 +744,19 @@ function frame(now) {
   if (tuerAuf || bildKurz === 'angry') lichtKurz = 'angry';
   else if (hinweis.offen || now < wachBis) lichtKurz = 'verstanden';
   const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== 'normal' });
+  const puls = pulsHuelle(now, scheinPulse);
+  const atem = 0.5 + 0.5 * Math.sin(now / 10000);
+  const lichtArt = (tuerAuf || bildKurz === 'angry') ? 'angry' : (modus === 'schlafwahl' || bildKurz === 'schlafen' ? 'schlafen' : (bildKurz === 'idle' ? 'idle' : bildKurz));
   renderer.setLicht({
-    profil: 'lebhaft',
+    profil: 'ruhig',
     zustand: befehl.name,
     rgb: befehl.rgb,
     alarmStark: konfig.alarmStaerke !== 'normal',
+    pegel: randPegel(lichtArt, puls, atem),
   });
   const ring = befehl.alarm
     ? [befehl.rgb, 1, null, 'angry']
     : (augen.ring || [[255, 106, 0], 0.2, null]);
-  const puls = pulsHuelle(now, scheinPulse);
-  if (puls > 0.02 && ring && !befehl.alarm) ring[1] = Math.min(1, (ring[1] || 0) + puls * 0.28);
-  setzeSchein(puls, !!befehl.alarm, befehl.alarm ? befehl.rgb : (ring && ring[0]));
   renderer.render(pose, ring);
   requestAnimationFrame(frame);
 }
@@ -598,8 +769,11 @@ starteHa();
 const startState = param('state', 'zustand');
 const sequence = param('sequence', 'sequenz');
 const reaktionStart = param('reaction', 'reaktion');
+const willkommen = sollWillkommen(konfig, location, q);
 if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-if (param('tour', 'ablauf') || (konfig.demo && !startState && !sequence && !reaktionStart)) starteSchau();
+if (param('intro') === '1' && !startState && !sequence) starteIntro();
+else if (param('lauf') === '1' && !startState && !sequence) starteLauf();
+else if (param('tour', 'ablauf') || (param('demo') === '1' && !startState && !sequence && !reaktionStart)) starteSchau();
 else if (reaktionStart && istReaktion(reaktionStart)) {
   reaktionHoren = reaktionStart;
   wendeZustand('idle', { ton: false, erzwingen: true });
@@ -617,7 +791,7 @@ else if (sequence) {
     else wendeZustand(roh, { ton: true, erzwingen: true });
   };
   setTimeout(() => { schritt(); setInterval(schritt, jede); }, 400);
-}
+} else if (willkommen) zeigeSchlafWahl();
 
 window.addEventListener('resize', () => renderer.resize());
 window.addEventListener('online', () => { if (ha && ha.nudge) ha.nudge(); });
@@ -629,6 +803,10 @@ window.addEventListener('mousedown', ersterKontakt, true);
 
 onZeiger(el('hinweis'), 'up', () => {
   ersterKontakt();
+  if (modus === 'lauf' || modus === 'intro') {
+    abbrechenVorfuehrung();
+    return;
+  }
   quittiereHinweis();
 });
 onZeiger(el('ecke'), 'down', (e) => {
@@ -655,11 +833,25 @@ if (ecke) {
   });
 }
 
+onZeiger(el('wahl-demo'), 'up', () => {
+  ersterKontakt();
+  starteLauf();
+});
+onZeiger(el('wahl-intro'), 'up', () => {
+  ersterKontakt();
+  starteIntro();
+});
+
 onZeiger(document.body, 'down', (e) => {
   ersterKontakt();
   if (zielId(e.target)) return;
-  if (schauLaeuft) {
-    stoppeSchau();
+  if (modus === 'lauf' || modus === 'intro' || schauLaeuft) {
+    if (schauLaeuft) stoppeSchau();
+    if (modus === 'lauf' || modus === 'intro') abbrechenVorfuehrung();
+    return;
+  }
+  if (modus === 'schlafwahl') {
+    merkeTipp(performance.now());
     return;
   }
   if (tuerAuf || bildKurz === 'angry') {
@@ -696,6 +888,7 @@ onZeiger(document.body, 'up', (e) => {
   langTimer = 0;
   druck = null;
   if (lang || moved || zielId(e.target)) return;
+  if (merkeTipp(performance.now())) return;
   const id = stupser.tipp(performance.now());
   const live = konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit;
   if (id === 'grumpy' || live >= 0.12) {

@@ -370,6 +370,15 @@
       "hint.hear": "tap me to hear me",
       "hint.forget": "Don't forget",
       "hint.demo": "Paper bin",
+      "hint.corner": "Hold the top corner, or tap five times.",
+      "welcome.demo": "Start the demo",
+      "welcome.intro": "Introduction",
+      "intro.1": "I want this face to retire the tiles.",
+      "intro.2": "A house run like KNX or Loxone should feel alive, not just switched.",
+      "intro.3": "That needs a local link, a little learning, and a screen that stays simple.",
+      "intro.4": "Voice and a few small gestures are the direction. This build does not listen yet.",
+      "intro.5": "It should only speak up when something fits, and not take itself too seriously.",
+      "intro.6": "Later it may change automations and think a step ahead. Not in this version.",
       "preview.summary": "Reactions",
       "preview.help": "A quiet list for trying each reaction. The first tap on the face unlocks the sound.",
       "cmd.help": "A script entity, or a service and a target, such as script.eye_music_on or light.turn_on/light.living_room.",
@@ -682,6 +691,15 @@
       "hint.hear": "tipp mich an, dann h\xF6rst du mich",
       "hint.forget": "Nicht vergessen",
       "hint.demo": "Papiertonne",
+      "hint.corner": "Oben links halten, oder f\xFCnfmal tippen.",
+      "welcome.demo": "Demo starten",
+      "welcome.intro": "Einf\xFChrung",
+      "intro.1": "Ich m\xF6chte mit diesem Gesicht die Kacheln loswerden.",
+      "intro.2": "Ein Haus wie mit KNX oder Loxone soll lebendig wirken, nicht nur schalten.",
+      "intro.3": "Daf\xFCr braucht es die lokale Anbindung, ein bisschen Lernen, und eine einfache Fl\xE4che.",
+      "intro.4": "Stimme und ein paar kleine Gesten sind die Richtung. Diese Fassung h\xF6rt noch nicht zu.",
+      "intro.5": "Es soll nur etwas sagen, wenn es passt, und sich nicht zu wichtig nehmen.",
+      "intro.6": "Sp\xE4ter kann es Automationen \xE4ndern und einen Schritt vorausdenken. Noch nicht hier.",
       "preview.summary": "Reaktionen",
       "preview.help": "Eine stille Liste, um jede Reaktion zu pr\xFCfen. Der erste Tipp auf das Gesicht schaltet den Ton frei.",
       "cmd.help": "Eine Skript-Entity oder ein Dienst mit Ziel, zum Beispiel script.eye_music_on oder light.turn_on/light.living_room.",
@@ -1019,7 +1037,7 @@
     reminderAckScript: "script.eye_hinweis_quittieren",
     kamera: "",
     ton: true,
-    lebendigkeit: 0.7,
+    lebendigkeit: 0.42,
     lautstaerke: 0.8,
     label: false,
     caption: true,
@@ -1189,7 +1207,7 @@
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
-    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.7);
+    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
     if ("lautstaerke" in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
@@ -1413,7 +1431,7 @@
   }
 
   // web/version.js
-  var VERSION = "2.1.0";
+  var VERSION = "2.2.0";
 
   // web/reaktionen.js
   var REAKTION_IDS = [
@@ -1665,11 +1683,9 @@
     const ton = el("ton");
     if (ton) ton.checked = !!konfig.ton;
     setWert("lautstaerke", String(Math.round((konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke) * 100)));
-    setWert("lebendigkeit", String(Math.round((konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit) * 100)));
+    setWert("lebendigkeit", String(Math.round((konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit) * 100)));
     const uhr = el("uhr-an");
     if (uhr) uhr.checked = !!konfig.uhr;
-    const demo = el("demo-an");
-    if (demo) demo.checked = !!konfig.demo;
     const alarm = el("alarm-staerke");
     if (alarm) alarm.value = konfig.alarmStaerke === "normal" ? "normal" : "stark";
     const sprache = el("sprache");
@@ -1701,7 +1717,6 @@
     k.lautstaerke = Math.max(0, Math.min(1, (Math.round(Number(lies("lautstaerke"))) || 0) / 100));
     k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies("lebendigkeit"))) || 0) / 100));
     k.uhr = !!(el("uhr-an") && el("uhr-an").checked);
-    k.demo = !!(el("demo-an") && el("demo-an").checked);
     const gewaehlt = lies("sprache");
     k.lang = gewaehlt === "auto" ? "" : gewaehlt;
     k.alarmStaerke = lies("alarm-staerke") === "normal" ? "normal" : "stark";

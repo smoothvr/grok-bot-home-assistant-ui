@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-10-31
+
+### Changed
+
+- One look: the eyes sit full-screen on black. The square frame and the cube styling are gone. The only light is the soft glow along the screen edge.
+- That glow stays quiet. Idle is a very slow, low breath. A small chirp lifts it a little, a louder phrase lifts it more, then it settles. Red is still only for angry.
+- Idle glances are a bit rarer. Liveliness still turns them up.
+- A public demo, and any fresh open with no Home Assistant address or token, starts asleep. Two lines offer the demo and a short introduction. A tap during either one returns to sleep. A configured install still starts in the normal face. Both are linked from settings.
+- `?demo=1` still runs the longer tour and holds music for 30 seconds.
+
+### Added
+
+- The introduction is a few short lines, in German or English, over the open eyes. It describes the direction. It does not claim that voice or asking Grok already works.
+- Settings can be opened with a two-second hold in the top corner, or with five quick taps. After the second touch, one faint line says so, once.
+
 ## [2.1.0] - 2026-10-31
 
 ### Added

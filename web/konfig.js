@@ -78,7 +78,7 @@ export const VORGABE = {
   reminderAckScript: 'script.eye_hinweis_quittieren',
   kamera: '',
   ton: true,
-  lebendigkeit: 0.7,
+  lebendigkeit: 0.42,
   lautstaerke: 0.8,
   label: false,
   caption: true,
@@ -262,7 +262,7 @@ function nurBekannte(obj) {
     out.kamera = id && gueltigeEntity(id) ? id : '';
   }
   if ('ton' in out) out.ton = !!out.ton;
-  if ('lebendigkeit' in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.7);
+  if ('lebendigkeit' in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
   if ('lautstaerke' in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
   if ('label' in out) out.label = !!out.label;
   if ('caption' in out) out.caption = !!out.caption;

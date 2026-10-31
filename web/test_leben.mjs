@@ -172,7 +172,7 @@ assert(scheinFarbe(false, [0, 200, 255]).indexOf('0, 200, 255') >= 0, 'other col
 {
   const live = mitUrl(VORGABE, new URLSearchParams('live=40&vol=0.5'));
   assert(Math.abs(live.lebendigkeit - 0.4) < 1e-9 && Math.abs(live.lautstaerke - 0.5) < 1e-9, 'live and volume from the URL');
-  assert(VORGABE.lebendigkeit === 0.7 && VORGABE.lautstaerke === 0.8, 'liveliness and volume defaults');
+  assert(VORGABE.lebendigkeit === 0.42 && VORGABE.lautstaerke === 0.8, 'liveliness and volume defaults');
 }
 
 assert(DEMO_REIHE[0] === 'hallo' && DEMO_REIHE[DEMO_REIHE.length - 1] === 'musik_an', 'demo still starts on hello and ends on music');

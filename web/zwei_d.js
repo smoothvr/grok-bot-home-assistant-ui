@@ -29,10 +29,20 @@ export class Szene2D {
     this.W = W; this.H = H; this.aspect = W / H; this.R = H / 2;
     this.bold = !!(opt && opt.bold);
     this.cheap = !!(opt && opt.cheap) || this.bold;
+    this.flat = !!(opt && opt.flat);
     const basis = this.bold ? BOLD : LOOK;
     // The living edge light replaces the old frame. This buffer stays uncoloured so the eye
     // pixels, and the parity hash, stay as they shipped. A second glow here would sit under the eyes.
-    this.look = opt && opt.cube ? { ...basis, CORNER: 0, RING_TAU: 0, RING_LINE: 0, RING_LINE_W: 0, FLOOR: 0, RIM: 0 } : basis;
+    this.look = opt && (opt.cube || opt.flat) ? { ...basis, CORNER: 0, RING_TAU: 0, RING_LINE: 0, RING_LINE_W: 0, FLOOR: 0, RIM: 0, VIGNETTE: 0, SHEEN: 0, BG_IN: [0, 0, 0], BG_OUT: [0, 0, 0] } : basis;
+    // Flat is only the eyes. The screen stays black. No panel, no inner frame.
+    if (this.flat) {
+      this.gq = 4;
+      if (!this.cheap) {
+        this.glow = canvas(Math.ceil(W / this.gq), Math.ceil(H / this.gq));
+        this.small = canvas(this.glow.width, this.glow.height);
+      }
+      return;
+    }
     // Static layers at half resolution. Soft gradients are scaled up. Old devices stay coarser.
     const q = this.cheap || W * H > 1.5e6 ? 2 : 1, w = Math.round(W / q), h = Math.round(H / q), L = this.look, A = this.aspect;
     this.bg = canvas(w, h); this.mask = canvas(w, h);

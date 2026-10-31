@@ -46,6 +46,7 @@ export const APPCACHE_DATEIEN = [
   'siteconfig.js',
   'wache.js',
   'hinweis.js',
+  'empfang.js',
   'blick.js',
   'wahl.js',
   'reaktionen.js',

@@ -47,8 +47,8 @@ export function blinkPause(lebendigkeit, art, rnd) {
 export function blickIntervall(lebendigkeit, rnd) {
   const zufall = typeof rnd === 'function' ? rnd : Math.random;
   const live = clamp01(lebendigkeit);
-  const lo = 2.8 - live * 1.5;
-  const hi = 6.4 - live * 3.1;
+  const lo = 3.6 - live * 1.6;
+  const hi = 8.2 - live * 3.2;
   const t = lo + Number(zufall()) * Math.max(0.2, hi - lo);
   return t > 0.4 ? t : 0.4;
 }
@@ -57,7 +57,7 @@ export function waehleBlick(letzte, rnd, lebendigkeit, hatMerker) {
   const zufall = typeof rnd === 'function' ? rnd : Math.random;
   const live = clamp01(lebendigkeit);
   const r = Number(zufall());
-  const pRuhe = 0.58 - live * 0.36;
+  const pRuhe = 0.68 - live * 0.36;
   const pSacc = pRuhe + 0.22 + live * 0.12;
   let art = 'ruhe';
   if (r < pRuhe) art = 'ruhe';
@@ -106,8 +106,8 @@ export function drift(t, seed) {
   const s = Number(seed) || 0;
   const zeit = Number(t) || 0;
   return {
-    gx: 0.04 * Math.sin(zeit * 0.31 + s),
-    gy: 0.026 * Math.sin(zeit * 0.22 + s * 1.3),
+    gx: 0.028 * Math.sin(zeit * 0.31 + s),
+    gy: 0.018 * Math.sin(zeit * 0.22 + s * 1.3),
   };
 }
 
