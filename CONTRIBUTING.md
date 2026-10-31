@@ -1,6 +1,6 @@
 # Contributing
 
-The maintainer is [@stefanvr82](https://github.com/stefanvr82).
+The maintainer is [@smoothvr](https://github.com/smoothvr).
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 

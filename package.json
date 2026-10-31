@@ -1,19 +1,19 @@
 {
   "name": "grok-bot-home-assistant-ui",
-  "version": "1.0.1",
-  "description": "Animated eye UI for a wall-mounted tablet. Local Home Assistant controls for music and lights; questions go to Grok Bot.",
+  "version": "2.0.0",
+  "description": "A face for a wall-mounted tablet. Eyes, light, and sound for local Home Assistant. Voice is not part of this release.",
   "license": "MIT",
-  "author": "stefanvr82 (https://github.com/stefanvr82)",
+  "author": "smoothvr (https://github.com/smoothvr)",
   "maintainers": [
-    "stefanvr82 (https://github.com/stefanvr82)"
+    "smoothvr (https://github.com/smoothvr)"
   ],
-  "homepage": "https://github.com/stefanvr82/grok-bot-home-assistant-ui",
+  "homepage": "https://github.com/smoothvr/grok-bot-home-assistant-ui",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stefanvr82/grok-bot-home-assistant-ui.git"
+    "url": "git+https://github.com/smoothvr/grok-bot-home-assistant-ui.git"
   },
   "bugs": {
-    "url": "https://github.com/stefanvr82/grok-bot-home-assistant-ui/issues"
+    "url": "https://github.com/smoothvr/grok-bot-home-assistant-ui/issues"
   },
   "type": "module",
   "devDependencies": {
@@ -23,6 +23,7 @@
   "scripts": {
     "start": "python3 -m http.server 8000 -d web",
     "build": "node scripts/build-legacy.mjs",
-    "test": "npm run build && node web/test_paritaet.mjs && node web/test_ha.mjs && node web/test_i18n.mjs && node web/test_legacy.mjs && node web/test_round.mjs"
+    "appcache": "node scripts/appcache.mjs",
+    "test": "npm run build && node web/test_paritaet.mjs && node web/test_ha.mjs && node web/test_i18n.mjs && node web/test_legacy.mjs && node web/test_round.mjs && node web/test_face.mjs"
   }
 }

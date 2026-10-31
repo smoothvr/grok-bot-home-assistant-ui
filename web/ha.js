@@ -30,7 +30,7 @@ const ALIAS = {
   sleep: 'schlafen',
   sleeping: 'schlafen',
   hallo: 'hallo',
-  wake: 'hallo',
+  wake: 'wake',
   wake_hallo: 'hallo',
   lachen: 'lachen',
   laugh: 'lachen',
@@ -253,19 +253,66 @@ export function zustandsliste(data, art) {
   return null;
 }
 
+export const HA_PING_MS = 30000;
+export const HA_PONG_MS = 10000;
+export const HA_AUTH_RETRY_MS = 60000;
+export const HA_RETRY_MS = 5000;
+
 export function verbindeHa(opts) {
   const {
-    url, token, entityId, mediaEntity = '', onZustand, onMedien, onStatus, onStates,
+    url: url0, token: token0, entityId, mediaEntity = '', onZustand, onMedien, onStatus, onStates,
     socketFactory = (u) => new WebSocket(u),
     reconnect = true,
+    liesZugang,
   } = opts;
+  const later = opts.setTimeout || setTimeout;
+  const cancel = opts.clearTimeout || clearTimeout;
+  const pingEvery = opts.pingEvery == null ? HA_PING_MS : opts.pingEvery;
+  const pongWait = opts.pongWait == null ? HA_PONG_MS : opts.pongWait;
+  const authRetryMs = opts.authRetryMs == null ? HA_AUTH_RETRY_MS : opts.authRetryMs;
+  const retryMs = opts.retryMs == null ? HA_RETRY_MS : opts.retryMs;
+  let url = url0;
+  let token = token0;
   let stopped = false;
+  let authPause = false;
+  let ersetzt = false;
   let ws = null;
   let naechsteId = 1;
   let timer = null;
+  let pingTimer = null;
+  let pongTimer = null;
   const wartet = new Map();
   const antworten = new Map();
   const status = (name, extra) => onStatus?.({ status: name, ...extra });
+
+  const frisch = () => {
+    if (typeof liesZugang !== 'function') return;
+    const zugang = liesZugang();
+    if (!zugang || typeof zugang !== 'object') return;
+    if (typeof zugang.url === 'string') url = zugang.url;
+    if (typeof zugang.token === 'string') token = zugang.token;
+  };
+
+  const clearPing = () => {
+    if (pingTimer) { cancel(pingTimer); pingTimer = null; }
+    if (pongTimer) { cancel(pongTimer); pongTimer = null; }
+  };
+
+  const armPing = () => {
+    clearPing();
+    pingTimer = later(() => {
+      pingTimer = null;
+      if (stopped || !ws || ws.readyState !== 1) return;
+      const id = naechsteId++;
+      wartet.set(id, 'ping');
+      try { ws.send(JSON.stringify({ id, type: 'ping' })); }
+      catch { return; }
+      pongTimer = later(() => {
+        pongTimer = null;
+        try { ws.close(); } catch { /* already closed */ }
+      }, pongWait);
+    }, pingEvery);
+  };
 
   const send = (msg, art) => {
     if (msg.id == null) msg.id = naechsteId++;
@@ -276,6 +323,12 @@ export function verbindeHa(opts) {
 
   const behandle = (data) => {
     const art = data && data.id != null ? wartet.get(data.id) : null;
+    if (data && (data.type === 'pong' || art === 'ping')) {
+      if (pongTimer) { cancel(pongTimer); pongTimer = null; }
+      if (data.id != null) wartet.delete(data.id);
+      armPing();
+      return;
+    }
     let angefragt = false;
     if (data && data.id != null && antworten.has(data.id)) {
       angefragt = true;
@@ -293,13 +346,15 @@ export function verbindeHa(opts) {
       if (aktion.typ === 'auth_required') {
         ws.send(JSON.stringify({ type: 'auth', access_token: token }));
       } else if (aktion.typ === 'auth_ok') {
+        authPause = false;
         status('verbunden');
         const [stati, abo] = startNachrichten(entityId, naechsteId);
         send(stati, 'get_states');
         send(abo, 'subscribe');
+        armPing();
       } else if (aktion.typ === 'auth_invalid') {
+        authPause = true;
         status('auth_ungueltig', { meldung: aktion.meldung });
-        stopped = true;
         try { ws.close(); } catch { /* already closed */ }
       } else if (aktion.typ === 'zustand') {
         onZustand?.(aktion);
@@ -315,7 +370,19 @@ export function verbindeHa(opts) {
 
   const connect = () => {
     if (stopped) return;
+    clearPing();
+    frisch();
+    if (!url || !token) {
+      status('aus', { meldung: token ? '' : 'tokenMissing' });
+      schedule(authRetryMs);
+      return;
+    }
     status('verbinde');
+    if (ws && ws.readyState < 2) {
+      const alt = ws;
+      alt.onclose = null;
+      try { alt.close(); } catch { /* already closed */ }
+    }
     try {
       ws = socketFactory(url);
     } catch (e) {
@@ -332,24 +399,35 @@ export function verbindeHa(opts) {
     ws.onerror = () => {};
     ws.onclose = () => {
       wartet.clear();
+      clearPing();
       if (stopped) return;
-      status('getrennt');
+      if (!authPause) status('getrennt');
       schedule();
     };
   };
 
-  const schedule = () => {
+  const schedule = (ms) => {
     if (stopped || !reconnect) return;
-    clearTimeout(timer);
-    timer = setTimeout(connect, 5000);
+    if (timer) cancel(timer);
+    const wait = ms != null ? ms : (authPause ? authRetryMs : retryMs);
+    timer = later(connect, wait);
   };
 
   connect();
   return {
     stop() {
       stopped = true;
-      clearTimeout(timer);
-      try { ws?.close(); } catch { /* already closed */ }
+      if (timer) cancel(timer);
+      timer = null;
+      clearPing();
+      try { if (ws) ws.close(); } catch { /* already closed */ }
+    },
+    nudge() {
+      if (stopped) return;
+      authPause = false;
+      if (ws && ws.readyState === 1) return;
+      if (timer) { cancel(timer); timer = null; }
+      connect();
     },
     callScript(spec) {
       return this.callService(spec);

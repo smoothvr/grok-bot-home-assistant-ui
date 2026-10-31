@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Offline shell. Classic script: an already registered worker updates this URL as a classic script.
 // npm run build writes VERSION from web/version.js. Do not add import or export here.
-const VERSION = '1.0.1';
+const VERSION = '2.0.0';
 const CACHE = `grok-bot-home-ui-${VERSION}`;
 const DATEIEN = [
   './',
   './index.html',
+  './settings.html',
+  './settings.js',
   './manifest.webmanifest',
   './app.js',
   './engine.js',
@@ -37,7 +39,10 @@ const DATEIEN = [
   './licht.js',
   './dimmen.js',
   './siteconfig.js',
+  './wache.js',
+  './hinweis.js',
   './legacy.js',
+  './settings-legacy.js',
   './onsets.json',
   './icons/favicon-32.png',
   './icons/apple-touch-icon.png',
@@ -60,6 +65,11 @@ const DATEIEN = [
   './sounds/12_licht_aus.wav',
   './sounds/13_kitzel.wav',
   './sounds/14_angry.wav',
+  './sounds/15_hmmm_a.wav',
+  './sounds/16_hmmm_b.wav',
+  './sounds/17_hmmm_c.wav',
+  './sounds/18_hmmm_d.wav',
+  './sounds/19_hinweis.wav',
 ];
 
 // The page, the version, and the scripts must come from the network when it is up.
