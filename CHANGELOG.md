@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-31
+
+### Added
+
+- Idle gaze with saccades, side and upward glances, a slow drift, and a slight head tilt in the eye shape. Blinks vary: single, double, a slow sleepy blink, and a half blink. A touch makes the eyes look that way for a moment, and they sometimes glance back.
+- Reactions with two to four renditions each, chosen at random and never repeated immediately: surprised, curious, shy, pleased, thinking, confused, a nod, sad (“no”), a happy bounce, relieved, sleepy, startled, grumpy, and content. A few quick pokes turn grumpy. A long press settles into content.
+- A procedural droid voice (Web Audio oscillators, no samples): a happy trill, a rising question, a sad descending boop, a thinking burble, a startled squeak, a sleepy yawn, and yes or no beeps. Pitch, tempo, and syllable count shift a little each time. Phrases stay short, quiet, and on a cooldown. The four presence-wake hums stay.
+- The edge light pulses with those beeps. It turns red only while angry.
+- Settings: a Liveliness slider (`Lebendigkeit`) and a volume slider. A collapsed Reactions list plays each reaction. `settings.html?preview=1` opens that list. `?reaction=curious&demo=0` plays one on the face. `?live=` and `?vol=` set the sliders for one visit.
+
+### Changed
+
+- Demo mode still ends on music for 30 seconds. Between the emotions it now shows the new reactions.
+- Sleep plays a short yawn with the existing sleep tone ducked under it. Closing the door plays a relieved reaction. A reminder and its acknowledgement, a presence wake, and a calm error each pick a fitting reaction.
+
 ## [2.0.0] - 2026-10-31
 
 ### Changed

@@ -370,6 +370,8 @@
       "hint.hear": "tap me to hear me",
       "hint.forget": "Don't forget",
       "hint.demo": "Paper bin",
+      "preview.summary": "Reactions",
+      "preview.help": "A quiet list for trying each reaction. The first tap on the face unlocks the sound.",
       "cmd.help": "A script entity, or a service and a target, such as script.eye_music_on or light.turn_on/light.living_room.",
       "cmd.musicOn": "Music on",
       "cmd.musicOff": "Music off",
@@ -379,6 +381,8 @@
       "display.mode": "View",
       "display.sleep": "Sleep after minutes (0 = never)",
       "display.sound": "Sound",
+      "display.volume": "Volume",
+      "display.liveliness": "Liveliness",
       "display.stateName": "State name",
       "display.caption": "Status line",
       "display.captionHelp": "A short line under the eyes. Tap it for details. When it is off, a faint mark at the bottom brings it back.",
@@ -678,6 +682,8 @@
       "hint.hear": "tipp mich an, dann h\xF6rst du mich",
       "hint.forget": "Nicht vergessen",
       "hint.demo": "Papiertonne",
+      "preview.summary": "Reaktionen",
+      "preview.help": "Eine stille Liste, um jede Reaktion zu pr\xFCfen. Der erste Tipp auf das Gesicht schaltet den Ton frei.",
       "cmd.help": "Eine Skript-Entity oder ein Dienst mit Ziel, zum Beispiel script.eye_music_on oder light.turn_on/light.living_room.",
       "cmd.musicOn": "Musik an",
       "cmd.musicOff": "Musik aus",
@@ -687,6 +693,8 @@
       "display.mode": "Ansicht",
       "display.sleep": "Einschlafen nach Minuten (0 = nie)",
       "display.sound": "Ton",
+      "display.volume": "Lautst\xE4rke",
+      "display.liveliness": "Lebendigkeit",
       "display.stateName": "Zustandsname",
       "display.caption": "Statuszeile",
       "display.captionHelp": "Eine kurze Zeile unter den Augen. Tippen \xF6ffnet die Details. Ist sie aus, holt eine schwache Markierung unten sie zur\xFCck.",
@@ -1011,6 +1019,8 @@
     reminderAckScript: "script.eye_hinweis_quittieren",
     kamera: "",
     ton: true,
+    lebendigkeit: 0.7,
+    lautstaerke: 0.8,
     label: false,
     caption: true,
     uhr: false,
@@ -1140,6 +1150,12 @@
       return null;
     }
   }
+  function einheit(v, fallback) {
+    let n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n > 1) n /= 100;
+    return Math.max(0, Math.min(1, n));
+  }
   function nurBekannte(obj) {
     const out = {};
     if (!obj || typeof obj !== "object") return out;
@@ -1173,6 +1189,8 @@
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
+    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.7);
+    if ("lautstaerke" in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
     if ("uhr" in out) out.uhr = !!out.uhr;
@@ -1348,6 +1366,10 @@
     if (p.get("label") === "1") n.label = true;
     if (p.get("ton") === "0") n.ton = false;
     if (p.get("ton") === "1") n.ton = true;
+    const live = p.get("live") || p.get("liveliness") || p.get("lebendigkeit");
+    if (live != null && live !== "" && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
+    const vol = p.get("vol") || p.get("volume");
+    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = einheit(vol, n.lautstaerke);
     const modus = normModus(p.get("mode") || p.get("modus") || p.get("theme"));
     if (modus) n.modus = modus;
     const licht = String(p.get("licht_profil") || p.get("light") || "").trim().toLowerCase();
@@ -1391,7 +1413,202 @@
   }
 
   // web/version.js
-  var VERSION = "2.0.0";
+  var VERSION = "2.1.0";
+
+  // web/reaktionen.js
+  var REAKTION_IDS = [
+    "surprised",
+    "curious",
+    "shy",
+    "pleased",
+    "thinking",
+    "confused",
+    "nod",
+    "sad",
+    "happy",
+    "relieved",
+    "sleepy",
+    "startled",
+    "grumpy",
+    "content"
+  ];
+  var SATZ = {};
+  for (let i = 0; i < REAKTION_IDS.length; i++) SATZ[REAKTION_IDS[i]] = true;
+  function spur(dauer, werte) {
+    const n = werte.length;
+    const keys = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const t2 = n === 1 ? 0 : dauer * i / (n - 1);
+      keys[i] = [t2, werte[i], i === 0 ? "lin" : "io"];
+    }
+    return keys;
+  }
+  function baue(phrase, dur, n, fn) {
+    const liste2 = [];
+    for (let i = 0; i < n; i++) {
+      const dauer = dur * (0.92 + i * 0.05);
+      const roh = fn(i);
+      const rend = { phrase, dur: dauer, index: i };
+      for (const key in roh) {
+        if (Object.prototype.hasOwnProperty.call(roh, key)) rend[key] = spur(dauer, roh[key]);
+      }
+      liste2.push(rend);
+    }
+    return liste2;
+  }
+  function seite(i) {
+    if (i % 3 === 2) return 0;
+    return i % 2 === 0 ? -1 : 1;
+  }
+  var REAKTIONEN = {
+    surprised: baue("startle", 0.88, 4, (i) => {
+      const s = seite(i);
+      const hoch = i === 2 ? 0.34 : 0.1;
+      return {
+        scale: [1, 1.14, 1.04, 1],
+        sy: [1, 1.16, 1.05, 1],
+        sx: [1, 0.9, 0.97, 1],
+        sep: [1, 1.07, 1.03, 1],
+        gy: [0, hoch, hoch * 0.4, 0],
+        gx: [0, s * 0.2, s * 0.08, 0],
+        dy: [0, 0.035, 0, 0]
+      };
+    }),
+    curious: baue("curious", 1.4, 4, (i) => {
+      const s = i % 2 === 0 ? -1 : 1;
+      const seit = (i === 2 ? 0.16 : 0.52) * (i === 3 ? 1 : s);
+      const hoch = 0.4 + i % 3 * 0.1;
+      return {
+        gx: [0, seit, seit * 0.72, 0.04 * s],
+        gy: [0, hoch, hoch * 0.82, 0.08],
+        tilt: [0, -s * (5 + i), -s * 3.5, 0],
+        roll: [0, s * 2.4, s * 1.2, 0],
+        sy: [1, 1.06, 1.04, 1],
+        scale: [1, 1.03, 1.02, 1]
+      };
+    }),
+    shy: baue("shy", 1.28, 4, (i) => {
+      const s = i % 2 === 0 ? -1 : 1;
+      return {
+        gx: [0, s * (0.28 + i * 0.04), s * 0.36, s * 0.1],
+        gy: [0, -0.26, -0.34, -0.08],
+        sy: [1, 0.9, 0.84, 0.96],
+        happy: [0, 0.12, 0.32, 0.08],
+        tilt: [0, s * (4 + i), s * 5, 0],
+        scale: [1, 0.97, 0.95, 1]
+      };
+    }),
+    pleased: baue("happy", 1.15, 4, (i) => {
+      const s = seite(i);
+      return {
+        happy: [0, 0.4, 0.58 + i * 0.03, 0.16],
+        sx: [1, 1.06, 1.1, 1],
+        sy: [1, 0.94, 0.9, 1],
+        dy: [0, 0.015, 0.028, 0],
+        gx: [0, s * 0.1, 0, 0]
+      };
+    }),
+    thinking: baue("think", 1.55, 3, (i) => {
+      const s = i === 1 ? 1 : -1;
+      const seit = i === 2 ? 0.12 : 0.48;
+      return {
+        gx: [0, s * seit, s * seit * 0.85, s * 0.16],
+        gy: [0, 0.5, 0.62, 0.28],
+        scale: [1, 0.95, 0.94, 0.98],
+        lidT: [0, 0.05, 0.1, 0.04],
+        tilt: [0, -s * 4, -s * 5, -s]
+      };
+    }),
+    confused: baue("curious", 1.35, 3, (i) => {
+      const s = i === 1 ? -1 : 1;
+      return {
+        roll: [0, s * 7, -s * 5, s * 2, 0],
+        lidA: [0, 12 + i, 8, 0],
+        gy: [0, -0.1, 0.16, 0],
+        gx: [0, s * 0.22, -s * 0.14, 0],
+        scale: [1, 0.93, 0.97, 1],
+        sy: [1, 0.96, 1.02, 1]
+      };
+    }),
+    nod: baue("yes", 1.05, 3, (i) => {
+      const hop = 0.045 + i * 0.012;
+      const zweiter = i === 0 ? 0 : -hop * 0.7;
+      return {
+        dy: [0, -hop, 0.012, zweiter, 0],
+        scale: [1, 0.98, 1.02, 1, 1],
+        happy: [0, 0.05, i === 2 ? 0.28 : 0.08, 0]
+      };
+    }),
+    sad: baue("sad", 1.55, 3, (i) => {
+      const s = i === 2 ? -0.16 : i === 1 ? 0.14 : 0;
+      return {
+        gy: [0, -0.28, -0.4, -0.22],
+        gx: [0, s, s * 1.2, s * 0.4],
+        lidT: [0, 0.16, 0.28, 0.14],
+        sy: [1, 0.86, 0.76, 0.9],
+        bright: [1, 0.78, 0.66, 0.82],
+        scale: [1, 0.98, 0.96, 0.98]
+      };
+    }),
+    happy: baue("happy", 1.2, 4, (i) => {
+      const hop = 0.05 + i * 0.012;
+      const s = seite(i);
+      return {
+        dy: [0, hop, 0, i === 0 ? 0 : hop * 0.65, 0],
+        happy: [0, 0.7, 0.85, 0.45, 0.05],
+        sx: [1, 1.14, 1.18, 1.08, 1],
+        sy: [1, 0.82, 0.78, 0.9, 1],
+        gx: [0, s * 0.08, 0, 0]
+      };
+    }),
+    relieved: baue("relieved", 1.35, 3, (i) => ({
+      lidT: [0.2, 0.08, 0.02, 0],
+      happy: [0, 0.18 + i * 0.06, 0.46, 0.12],
+      dy: [0, -0.02, 0.03, 0],
+      scale: [0.96, 1.04, 1.02, 1],
+      sy: [0.88, 1.04, 1, 1],
+      gx: [0, (i - 1) * 0.12, 0, 0]
+    })),
+    sleepy: baue("sleepy", 1.9, 3, (i) => ({
+      lidT: [0, 0.1, 0.24 + i * 0.04, 0.38],
+      gy: [0, -0.08, -0.26, -0.34],
+      sy: [1, 0.9, 0.74, 0.62],
+      bright: [1, 0.82, 0.64, 0.5],
+      scale: [1, 0.99, 0.96, 0.94],
+      gx: [0, (i - 1) * 0.06, 0, 0]
+    })),
+    startled: baue("startle", 0.72, 4, (i) => {
+      const s = seite(i);
+      return {
+        scale: [1, 1.2, 1.06, 1],
+        sy: [1, 1.22, 1.08, 1],
+        sx: [1, 0.88, 0.96, 1],
+        sep: [1, 1.09, 1.03, 1],
+        dy: [0, 0.045, 0, 0],
+        gx: [0, s * 0.16, s * 0.04, 0],
+        gy: [0, i === 2 ? 0.28 : 0.12, 0.04, 0]
+      };
+    }),
+    grumpy: baue("no", 1.12, 3, (i) => {
+      const s = i === 1 ? -1 : 1;
+      return {
+        lidT: [0, 0.18, 0.32, 0.14],
+        lidA: [0, -12, -18 - i, -6],
+        sy: [1, 0.84, 0.74, 0.9],
+        sx: [1, 1.05, 1.1, 1.02],
+        gx: [0, s * 0.26, -s * 0.16, 0],
+        scale: [1, 0.98, 0.97, 1]
+      };
+    }),
+    content: baue("content", 1.45, 3, (i) => ({
+      happy: [0, 0.28, 0.48 + i * 0.04, 0.32],
+      lidT: [0, 0.04, 0.1, 0.05],
+      scale: [1, 1.02, 1.04, 1.02],
+      dy: [0, 8e-3, 0.016, 8e-3],
+      sy: [1, 0.97, 0.94, 0.98],
+      gx: [0, (i - 1) * 0.08, 0, 0]
+    }))
+  };
 
   // web/settings.js
   var q = new URLSearchParams(location.search);
@@ -1447,6 +1664,8 @@
     setWert("dim-stufe", String(Math.round(((_b = konfig.dimStufe) != null ? _b : 0.3) * 100)));
     const ton = el("ton");
     if (ton) ton.checked = !!konfig.ton;
+    setWert("lautstaerke", String(Math.round((konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke) * 100)));
+    setWert("lebendigkeit", String(Math.round((konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit) * 100)));
     const uhr = el("uhr-an");
     if (uhr) uhr.checked = !!konfig.uhr;
     const demo = el("demo-an");
@@ -1479,6 +1698,8 @@
     k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(Number(lies("dim-nach"))) || 0));
     k.dimStufe = Math.max(0.05, Math.min(1, (Math.round(Number(lies("dim-stufe"))) || 30) / 100));
     k.ton = !!(el("ton") && el("ton").checked);
+    k.lautstaerke = Math.max(0, Math.min(1, (Math.round(Number(lies("lautstaerke"))) || 0) / 100));
+    k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies("lebendigkeit"))) || 0) / 100));
     k.uhr = !!(el("uhr-an") && el("uhr-an").checked);
     k.demo = !!(el("demo-an") && el("demo-an").checked);
     const gewaehlt = lies("sprache");
@@ -1530,6 +1751,24 @@
   }
   applyI18n();
   fuellen();
+  baueVorschau();
   var form = el("form");
   if (form) form.addEventListener("submit", speichern);
+  function baueVorschau() {
+    const box = el("preview-list");
+    const details = el("preview-reactions");
+    if (!box) return;
+    if (q.get("preview") === "1" && details) details.open = true;
+    for (let i = 0; i < REAKTION_IDS.length; i++) {
+      const id = REAKTION_IDS[i];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "preview-btn";
+      button.textContent = id;
+      button.addEventListener("click", () => {
+        location.href = "index.html?demo=0&reaction=" + encodeURIComponent(id);
+      });
+      box.appendChild(button);
+    }
+  }
 })();

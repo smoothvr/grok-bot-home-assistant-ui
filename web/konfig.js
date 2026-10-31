@@ -78,6 +78,8 @@ export const VORGABE = {
   reminderAckScript: 'script.eye_hinweis_quittieren',
   kamera: '',
   ton: true,
+  lebendigkeit: 0.7,
+  lautstaerke: 0.8,
   label: false,
   caption: true,
   uhr: false,
@@ -220,6 +222,13 @@ function lesen(storage, key) {
   try { return storage?.getItem(key) ?? null; } catch { return null; }
 }
 
+function einheit(v, fallback) {
+  let n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  if (n > 1) n /= 100;
+  return Math.max(0, Math.min(1, n));
+}
+
 function nurBekannte(obj) {
   const out = {};
   if (!obj || typeof obj !== 'object') return out;
@@ -253,6 +262,8 @@ function nurBekannte(obj) {
     out.kamera = id && gueltigeEntity(id) ? id : '';
   }
   if ('ton' in out) out.ton = !!out.ton;
+  if ('lebendigkeit' in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.7);
+  if ('lautstaerke' in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
   if ('label' in out) out.label = !!out.label;
   if ('caption' in out) out.caption = !!out.caption;
   if ('uhr' in out) out.uhr = !!out.uhr;
@@ -429,6 +440,10 @@ export function mitUrl(konfig, params) {
   if (p.get('label') === '1') n.label = true;
   if (p.get('ton') === '0') n.ton = false;
   if (p.get('ton') === '1') n.ton = true;
+  const live = p.get('live') || p.get('liveliness') || p.get('lebendigkeit');
+  if (live != null && live !== '' && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
+  const vol = p.get('vol') || p.get('volume');
+  if (vol != null && vol !== '' && !Number.isNaN(+vol)) n.lautstaerke = einheit(vol, n.lautstaerke);
   const modus = normModus(p.get('mode') || p.get('modus') || p.get('theme'));
   if (modus) n.modus = modus;
   const licht = String(p.get('licht_profil') || p.get('light') || '').trim().toLowerCase();

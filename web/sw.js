@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Offline shell. Classic script: an already registered worker updates this URL as a classic script.
 // npm run build writes VERSION from web/version.js. Do not add import or export here.
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 const CACHE = `grok-bot-home-ui-${VERSION}`;
 const DATEIEN = [
   './',
@@ -41,6 +41,10 @@ const DATEIEN = [
   './siteconfig.js',
   './wache.js',
   './hinweis.js',
+  './blick.js',
+  './wahl.js',
+  './reaktionen.js',
+  './stimme.js',
   './legacy.js',
   './settings-legacy.js',
   './onsets.json',

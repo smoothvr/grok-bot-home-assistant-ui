@@ -47,6 +47,7 @@ Useful query parameters:
 | `?door=binary_sensor.front_door` | Hold angry while this contact is open, and relax when it closes. |
 | `?presence=binary_sensor.living_room_presence` | Wake from sleep when this sensor turns on. |
 | `?alarm=strong` or `?alarm=normal` | Alarm intensity. `?alarm_intensity=` accepts the same words. Strong is the default. |
+| `?live=0.7` or `?vol=0.8` | Liveliness and sound volume for this visit. A value above 1 is treated as a percent. |
 | `?ha=mock&sequence=listening,done` | Play states without a server. |
 
 Phone and tablet keep separate saved profiles in the same browser.
@@ -57,9 +58,15 @@ One look. Soft eyes, and a living edge light on every state except angry. Angry 
 
 Sleep is in minutes. `0` keeps the eyes awake. After `dimAfter` seconds of quiet the page dims (30 percent unless you change it). While the eyes are asleep the screen stays dim. A tap wakes them. Presence can wake them only from sleep, and only again after the next sleep.
 
+While idle the eyes saccade, glance to the sides and up, drift slowly, and tilt a little. Blinks come as a single, a double, a slow sleepy blink, or a half blink. A touch draws a look. A few quick pokes turn the face grumpy. A long press, about 0.7 seconds and not in the settings corner, makes it content. Each reaction has a few renditions and does not repeat the same one immediately.
+
+The droid chatter is generated in the browser: short beeps and chirps, a little different every time, with a cooldown so a hallway does not get a stream of noise. The four wake hums are unchanged. Red light is still only for angry. Other reactions pulse the current edge colour in time with the beeps.
+
+Settings has a Liveliness slider and a volume slider. Liveliness `0` keeps the gaze rare and skips casual tap reactions. The collapsed Reactions list at the bottom of settings plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the sliders for one visit (`70` or `0.7` both work).
+
 `speaking` on `input_select.eye_ui_state` lights the speaking colour while the eyes stay idle. `wake` on that same entity is the presence wake, not a separate clip.
 
-Demo mode loops the emotions and ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. It does not change a saved token.
+Demo mode loops the emotions and the newer reactions, and ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. It does not change a saved token.
 
 Hold the top-left corner for about 2 seconds to open settings. There is no gear and no sheet.
 

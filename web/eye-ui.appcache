@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2.0.0
+# version 2.1.0
 
 CACHE:
 index.html
@@ -40,6 +40,10 @@ dimmen.js
 siteconfig.js
 wache.js
 hinweis.js
+blick.js
+wahl.js
+reaktionen.js
+stimme.js
 sw.js
 onsets.json
 config.example.json

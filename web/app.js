@@ -21,6 +21,11 @@ import { helligkeit, tuerOffen } from './dimmen.js';
 import { captionLine, resolveLocale, translate } from './strings.js';
 import { anwesend, createWecker } from './wache.js';
 import { ackAnHa, createHinweis } from './hinweis.js';
+import { blickZumPunkt } from './blick.js';
+import {
+  ACK_POOL, FEHLER_POOL, HINWEIS_POOL, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
+} from './reaktionen.js';
+import { createStimme, pulsHuelle, scheinFarbe } from './stimme.js';
 
 const q = new URLSearchParams(location.search);
 const ON = await (await fetch('onsets.json')).json();
@@ -45,8 +50,12 @@ if (demoBesuch(konfig, location, q)) konfig.demo = true;
 let locale = resolveLocale({ query: q.get('lang'), stored: konfig.lang, nav: navigator.language });
 const audio = createAudio(CLIPS, ['15_hmmm_a', '16_hmmm_b', '17_hmmm_c', '18_hmmm_d', HINWEIS_TON]);
 audio.setTon(konfig.ton);
+const stimme = createStimme();
+const reaktionen = createReaktionLauf();
+const stupser = createStupser();
 const demoMusik = createDemoMusic();
 const augen = new Augen(CLIPS);
+augen.setLebendigkeit(konfig.lebendigkeit);
 const waechter = createWaechter(konfig.schlafSekunden);
 const wecker = createWecker();
 const hinweis = createHinweis();
@@ -74,6 +83,14 @@ let eckTimer = 0;
 let eckStart = null;
 let last = performance.now();
 let lastDraw = 0;
+let reaktion = null;
+let scheinPulse = [];
+let scheinDeckkraft = -1;
+let scheinZuletzt = '';
+let stoerungAktiv = false;
+let druck = null;
+let langTimer = 0;
+const LANG_MS = 720;
 
 function el(id) { return document.getElementById(id); }
 function t(key) { return translate(locale, key); }
@@ -101,18 +118,97 @@ function gehoert() {
   return !!(audioFrei && audio.status().freigegeben);
 }
 
+let reaktionHoren = '';
 function ersterKontakt() {
+  const neu = !audioFrei;
   if (audioFrei) return;
   audioFrei = true;
   syncHearHint();
   audio.unlock().catch(() => {});
+  if (neu && reaktionHoren) {
+    const id = reaktionHoren;
+    reaktionHoren = '';
+    spieleReaktion(id, { ton: true, erzwingen: true });
+  }
+}
+
+function pegel(gain) {
+  const laut = konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke;
+  return Math.max(0, Math.min(1, (gain == null ? 1 : gain) * laut));
 }
 
 function spieleDatei(name, gain) {
   if (!audioFrei || !konfig.ton || !name) return;
   audio.unlock().then(() => {
-    if (audio.status().freigegeben) audio.ton({ sound: name, gain: gain == null ? 1 : gain });
+    if (audio.status().freigegeben) audio.ton({ sound: name, gain: pegel(gain) });
   }).catch(() => {});
+}
+
+function merkePulse(pulses) {
+  if (!pulses || !pulses.length) return;
+  const jetzt = performance.now();
+  const bleiben = [];
+  for (let i = 0; i < scheinPulse.length; i++) if (scheinPulse[i].at + scheinPulse[i].ms > jetzt - 40) bleiben.push(scheinPulse[i]);
+  for (let i = 0; i < pulses.length; i++) bleiben.push(pulses[i]);
+  scheinPulse = bleiben.length > 16 ? bleiben.slice(bleiben.length - 16) : bleiben;
+}
+
+function sag(phraseId, gain) {
+  if (!phraseId || !konfig.ton) return;
+  const phrase = stimme.plan(phraseId, performance.now());
+  if (!phrase) return;
+  const laut = pegel(gain == null ? 1 : gain);
+  if (!audioFrei) {
+    merkePulse(stimme.spiel(null, phrase, 0, performance.now()));
+    return;
+  }
+  audio.unlock().then(() => {
+    const ctx = audio.context();
+    const frei = audio.status().freigegeben;
+    merkePulse(stimme.spiel(frei ? ctx : null, phrase, frei ? laut : 0, performance.now()));
+  }).catch(() => {});
+}
+
+function spieleReaktion(id, opt) {
+  const o = opt || {};
+  const rend = reaktionen.start(id, augen.now, o);
+  if (!rend) return null;
+  const live = konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit;
+  const basis = o.staerke == null ? 1 : o.staerke;
+  reaktion = {
+    rend,
+    t0: augen.now,
+    staerke: basis * (0.4 + 0.6 * Math.max(0, Math.min(1, live))),
+    blick: o.blick !== false,
+  };
+  if (o.ton !== false) sag(rend.phrase, o.gain == null ? 0.85 : o.gain);
+  return rend;
+}
+
+function legeReaktion(pose) {
+  if (!reaktion) return pose;
+  const t = augen.now - reaktion.t0;
+  if (t >= reaktion.rend.dur) {
+    reaktion = null;
+    return pose;
+  }
+  const extra = poseBei(reaktion.rend, t);
+  const s = staerke(t, reaktion.rend.dur) * reaktion.staerke;
+  return mische(pose, extra, s, reaktion.blick);
+}
+
+function setzeSchein(puls, alarm, rgb) {
+  const node = el('schein');
+  if (!node) return;
+  const farbe = scheinFarbe(!!alarm, rgb);
+  if (farbe !== scheinZuletzt) {
+    scheinZuletzt = farbe;
+    node.style.boxShadow = 'inset 0 0 90px 12px ' + farbe;
+  }
+  const deckung = puls > 0.02 ? Math.max(0, Math.min(0.72, puls * 0.7)) : 0;
+  if (Math.abs(deckung - scheinDeckkraft) < 0.02) return;
+  scheinDeckkraft = deckung;
+  node.style.opacity = String(deckung);
 }
 
 function istStoerung() {
@@ -161,18 +257,19 @@ function stopAlarmTon() {
   clearInterval(alarmPuls);
   alarmPuls = 0;
 }
-function tonFuer(kurz) {
+function tonFuer(kurz, gainScale) {
   if (!audioFrei || !konfig.ton) return;
   const clip = BY[KURZ[kurz]];
   if (!clip) return;
+  const skala = gainScale == null ? 1 : gainScale;
   audio.unlock().then(() => {
     if (!audio.status().freigegeben) return;
     if (kurz !== 'angry') stopAlarmTon();
     if (kurz === 'angry' && clip.sound) {
-      audio.ton({ sound: clip.sound, gain: konfig.alarmStaerke === 'normal' ? 0.6 : 1 });
+      audio.ton({ sound: clip.sound, gain: pegel((konfig.alarmStaerke === 'normal' ? 0.6 : 1) * skala) });
       return;
     }
-    if (clip.sound) audio.ton(clip);
+    if (clip.sound) audio.ton({ sound: clip.sound, s_off: clip.s_off, gain: pegel((clip.gain == null ? 1 : clip.gain) * skala) });
   }).catch(() => {});
 }
 
@@ -213,11 +310,15 @@ function wendeZustand(roh, opt) {
   }
   if (kurz === 'schlafen') waechter.einschlafen();
   else waechter.beruehrt();
+  if (kurz === 'angry') reaktion = null;
   augen.set(KURZ[kurz]);
   bildKurz = kurz;
   letzterKurz = kurz;
   letzterWechsel = performance.now();
-  if (ton) tonFuer(kurz);
+  if (kurz === 'schlafen' && ton) {
+    spieleReaktion('sleepy', { ton: true, erzwingen: true, staerke: 0.62, gain: 0.7 });
+    tonFuer(kurz, 0.28);
+  } else if (ton) tonFuer(kurz);
   zeichneCaption();
   syncDemoTrack();
   return true;
@@ -233,10 +334,14 @@ function starteWecken(variante) {
   augen.glance = [variante.gx, variante.gy];
   augen.nextGlance = augen.now + variante.hold;
   augen.nextBlink = augen.now + variante.hold + 2;
+  augen.schau(variante.gx, variante.gy);
+  if (augen.touch) augen.touch.dur = Math.max(0.7, variante.hold);
+  augen.blick.bis(augen.now + Math.max(0.7, variante.hold));
   const warte = Math.max(0, Math.round(variante.blink * 1000));
   setTimeout(() => { augen.blinkAt = augen.now; }, warte);
   wachBis = performance.now() + variante.hold * 1000;
-  spieleDatei(variante.sound, 0.75);
+  setTimeout(() => spieleDatei(variante.sound, 0.75), 180);
+  spieleReaktion('startled', { ton: true, blick: false, erzwingen: true, gain: 0.5 });
   zeichneCaption();
 }
 
@@ -260,6 +365,9 @@ function zeigeHinweis(text, quelle) {
     }
   }
   wachBis = Math.max(wachBis, performance.now() + 1800);
+  if (!tuerAuf && bildKurz !== 'angry') {
+    spieleReaktion(reaktionen.aus(HINWEIS_POOL), { ton: true, erzwingen: true, gain: 0.7 });
+  }
   if (node) node.hidden = false;
   const label = el('hinweis-label');
   if (label) label.textContent = t('hint.forget');
@@ -278,6 +386,9 @@ function quittiereHinweis() {
   const body = el('hinweis-text');
   if (body) body.textContent = '';
   if (ackAnHa(quelle) && ha && konfig.reminderAckScript) ha.callScript(konfig.reminderAckScript);
+  if (!tuerAuf && bildKurz !== 'angry') {
+    spieleReaktion(reaktionen.aus(ACK_POOL), { ton: true, erzwingen: true, gain: 0.65 });
+  }
 }
 
 function zeigeDemoHinweis() {
@@ -290,7 +401,10 @@ function pruefeTuer(state) {
   if (offen === tuerAuf) return;
   tuerAuf = offen;
   if (offen) wendeZustand('angry', { ton: true, erzwingen: true });
-  else wendeZustand('idle', { ton: false, erzwingen: true });
+  else {
+    wendeZustand('idle', { ton: false, erzwingen: true });
+    spieleReaktion('relieved', { ton: true, erzwingen: true, gain: 0.7 });
+  }
 }
 
 function onStates(liste) {
@@ -355,6 +469,12 @@ function syncPause() {
 }
 
 function sprungSchau(schritt) {
+  if (istReaktion(schritt.kurz)) {
+    if (bildKurz !== 'idle') wendeZustand('idle', { ton: false, erzwingen: true });
+    spieleReaktion(schritt.kurz, { ton: true, erzwingen: true });
+    syncDemoTrack();
+    return;
+  }
   wendeZustand(schritt.kurz, { ton: true, erzwingen: true });
   syncDemoTrack();
 }
@@ -422,12 +542,24 @@ function beiSicht() {
   if (ha && ha.nudge) ha.nudge();
 }
 
+function pruefeStoerung() {
+  const an = istStoerung();
+  if (!an) {
+    stoerungAktiv = false;
+    return;
+  }
+  if (stoerungAktiv || performance.now() < 2500 || tuerAuf || bildKurz === 'angry') return;
+  stoerungAktiv = true;
+  spieleReaktion(reaktionen.aus(FEHLER_POOL), { ton: true, staerke: 0.55, gain: 0.45 });
+}
+
 function frame(now) {
   tickSchau(now);
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   syncPause();
-  const pose = augen.tick(dt);
+  pruefeStoerung();
+  const pose = legeReaktion(augen.tick(dt));
   if (!pauseAn && waechter.tick() === 'einschlafen') {
     wecker.eingeschlafen();
     wendeZustand('schlafen', { ton: true });
@@ -451,6 +583,9 @@ function frame(now) {
   const ring = befehl.alarm
     ? [befehl.rgb, 1, null, 'angry']
     : (augen.ring || [[255, 106, 0], 0.2, null]);
+  const puls = pulsHuelle(now, scheinPulse);
+  if (puls > 0.02 && ring && !befehl.alarm) ring[1] = Math.min(1, (ring[1] || 0) + puls * 0.28);
+  setzeSchein(puls, !!befehl.alarm, befehl.alarm ? befehl.rgb : (ring && ring[0]));
   renderer.render(pose, ring);
   requestAnimationFrame(frame);
 }
@@ -462,8 +597,14 @@ starteHa();
 
 const startState = param('state', 'zustand');
 const sequence = param('sequence', 'sequenz');
+const reaktionStart = param('reaction', 'reaktion');
 if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-if (param('tour', 'ablauf') || (konfig.demo && !startState && !sequence)) starteSchau();
+if (param('tour', 'ablauf') || (konfig.demo && !startState && !sequence && !reaktionStart)) starteSchau();
+else if (reaktionStart && istReaktion(reaktionStart)) {
+  reaktionHoren = reaktionStart;
+  wendeZustand('idle', { ton: false, erzwingen: true });
+  spieleReaktion(reaktionStart, { ton: false, erzwingen: true });
+}
 else if (sequence) {
   const namen = sequence.split(',').map((s) => s.trim()).filter(Boolean);
   const jede = Math.max(400, (+param('sequence_s', 'sequenz_s') || 3) * 1000);
@@ -521,9 +662,51 @@ onZeiger(document.body, 'down', (e) => {
     stoppeSchau();
     return;
   }
-  if (waechter.schlaeft) wendeZustand('hallo', { ton: true, erzwingen: true });
-  else waechter.beruehrt();
+  if (tuerAuf || bildKurz === 'angry') {
+    waechter.beruehrt();
+    return;
+  }
+  schauAuf(e);
+  if (waechter.schlaeft) {
+    wendeZustand('hallo', { ton: true, erzwingen: true });
+    return;
+  }
+  waechter.beruehrt();
+  druck = { x: e.clientX, y: e.clientY, lang: false };
+  if (langTimer) clearTimeout(langTimer);
+  langTimer = setTimeout(() => {
+    langTimer = 0;
+    if (!druck) return;
+    druck.lang = true;
+    spieleReaktion('content', { ton: true, erzwingen: true, gain: 0.6 });
+  }, LANG_MS);
 });
+onZeiger(document.body, 'move', (e) => {
+  if (!druck || druck.lang) return;
+  if (Math.abs(e.clientX - druck.x) > 28 || Math.abs(e.clientY - druck.y) > 28) {
+    if (langTimer) clearTimeout(langTimer);
+    langTimer = 0;
+  }
+});
+onZeiger(document.body, 'up', (e) => {
+  if (!druck) return;
+  const lang = druck.lang;
+  const moved = Math.abs(e.clientX - druck.x) > 28 || Math.abs(e.clientY - druck.y) > 28;
+  if (langTimer) clearTimeout(langTimer);
+  langTimer = 0;
+  druck = null;
+  if (lang || moved || zielId(e.target)) return;
+  const id = stupser.tipp(performance.now());
+  const live = konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit;
+  if (id === 'grumpy' || live >= 0.12) {
+    spieleReaktion(id, { ton: live > 0.15 || id === 'grumpy', erzwingen: id === 'grumpy' });
+  }
+});
+
+function schauAuf(e) {
+  const z = blickZumPunkt(e.clientX, e.clientY, window.innerWidth || 1, window.innerHeight || 1);
+  augen.schau(z.gx, z.gy);
+}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -7,6 +7,7 @@ import {
 import { dienstAus, gueltigeEntity, normalisiereHaUrl } from './ha.js';
 import { resolveLocale, translate } from './strings.js';
 import { VERSION } from './version.js';
+import { REAKTION_IDS } from './reaktionen.js';
 
 const q = new URLSearchParams(location.search);
 setzeKlasse(geraeteKlasse({
@@ -61,6 +62,8 @@ function fuellen() {
   setWert('dim-stufe', String(Math.round((konfig.dimStufe ?? 0.3) * 100)));
   const ton = el('ton');
   if (ton) ton.checked = !!konfig.ton;
+  setWert('lautstaerke', String(Math.round((konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke) * 100)));
+  setWert('lebendigkeit', String(Math.round((konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit) * 100)));
   const uhr = el('uhr-an');
   if (uhr) uhr.checked = !!konfig.uhr;
   const demo = el('demo-an');
@@ -95,6 +98,8 @@ function uebernehmen(k) {
   k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(Number(lies('dim-nach'))) || 0));
   k.dimStufe = Math.max(0.05, Math.min(1, (Math.round(Number(lies('dim-stufe'))) || 30) / 100));
   k.ton = !!(el('ton') && el('ton').checked);
+  k.lautstaerke = Math.max(0, Math.min(1, (Math.round(Number(lies('lautstaerke'))) || 0) / 100));
+  k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies('lebendigkeit'))) || 0) / 100));
   k.uhr = !!(el('uhr-an') && el('uhr-an').checked);
   k.demo = !!(el('demo-an') && el('demo-an').checked);
   const gewaehlt = lies('sprache');
@@ -139,5 +144,24 @@ function speichern(ev) {
 
 applyI18n();
 fuellen();
+baueVorschau();
 const form = el('form');
 if (form) form.addEventListener('submit', speichern);
+
+function baueVorschau() {
+  const box = el('preview-list');
+  const details = el('preview-reactions');
+  if (!box) return;
+  if (q.get('preview') === '1' && details) details.open = true;
+  for (let i = 0; i < REAKTION_IDS.length; i++) {
+    const id = REAKTION_IDS[i];
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'preview-btn';
+    button.textContent = id;
+    button.addEventListener('click', () => {
+      location.href = 'index.html?demo=0&reaction=' + encodeURIComponent(id);
+    });
+    box.appendChild(button);
+  }
+}

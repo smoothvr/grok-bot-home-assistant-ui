@@ -12,9 +12,13 @@ Sleep is in minutes. `0` keeps the eyes awake. The page dims to 30 percent after
 
 The status line is a short caption for the current emotion, or “One moment.” when the connection needs a moment. Raw errors are not shown. Demo mode is optional. Alarm intensity is Strong. `?alarm=normal` or `?alarm=strong` changes it for one visit, and `?alarm_intensity=` accepts the same words.
 
+Liveliness (`Lebendigkeit`) and volume are sliders on the settings page. Liveliness changes how often the eyes glance and whether a casual tap gets a reaction. `?live=` and `?vol=` do the same for one visit.
+
 <h2 id="sound">Sound</h2>
 
-The first tap anywhere unlocks sound and keeps it unlocked for that visit. Until then the page is light only, and it shows one small line, “tap me to hear me”. Idle stays quiet. Other states have their own tone. A presence wake plays one of four short hums. A reminder plays a soft chime.
+The first tap anywhere unlocks sound and keeps it unlocked for that visit. Until then the page is light only, and it shows one small line, “tap me to hear me”. Idle stays quiet. Other states have their own tone. A presence wake plays one of four short hums, with a small startled squeak just before. A reminder plays a soft chime and a short nod or question.
+
+Reactions also speak in generated beeps: a happy trill, a curious rise, a sad descending boop, a thinking burble, a startled squeak, a sleepy yawn, and yes or no. Pitch, tempo, and the number of notes change a little each play. Phrases are short and sit under a cooldown. The volume slider scales every tone. Mute still silences them. This uses `AudioContext`, or `webkitAudioContext` on iOS 10. No sound files were added for the chatter.
 
 This page does not use the microphone. Voice is not part of this release.
 
@@ -60,7 +64,9 @@ A reminder from `input_text.eye_hinweis` wakes the face, shows “Don't forget�
 
 <h2 id="demo">Demo</h2>
 
-Demo mode loops the emotions, ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. `?demo=1` forces it. `?demo=0` leaves a public page idle. On the public demo host no token is ever stored.
+Demo mode loops the emotions and the reactions (surprised, curious, a nod, happy, shy, confused, sad, relieved, sleepy, grumpy, content, and the others), ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. `?demo=1` forces it. `?demo=0` leaves a public page idle. On the public demo host no token is ever stored.
+
+Settings keeps a collapsed Reactions list for trying one reaction at a time. `settings.html?preview=1` opens it. `index.html?demo=0&reaction=curious` plays that reaction. The first tap unlocks the beep.
 
 <h2 id="phone">Phone and tablet</h2>
 

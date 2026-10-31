@@ -30,6 +30,15 @@
     text-decoration: none;
   }
   #form-fehler { min-height: 1.2em; color: #e7a394; }
+  input[type="range"] { padding: 10px 0; }
+  #preview-reactions { margin-top: 28px; color: #8a8176; }
+  #preview-reactions summary { cursor: pointer; font-size: 13px; letter-spacing: .04em; }
+  #preview-reactions p { margin-top: 8px; font-size: 13px; }
+  .preview-btn {
+    margin: 8px 8px 0 0; padding: 6px 10px; border-radius: 999px;
+    border: 1px solid #2a2a2a; background: #161616; color: #d9d0c6;
+    font: inherit; font-size: 13px;
+  }
   footer { margin-top: 28px; display: flex; align-items: center; gap: 12px; }
   footer a { color: #b7aea3; }
   #credits { margin-top: 12px; font-size: 14px; }
@@ -74,14 +83,23 @@
       <option value="normal">Normal</option>
     </select>
     <label class="check"><input id="ton" type="checkbox"> <span data-i18n="display.sound">Sound</span></label>
+    <label for="lautstaerke" data-i18n="display.volume">Volume</label>
+    <input id="lautstaerke" type="range" min="0" max="100" step="1" value="80">
+    <label for="lebendigkeit" data-i18n="display.liveliness">Liveliness</label>
+    <input id="lebendigkeit" type="range" min="0" max="100" step="1" value="70">
     <label class="check"><input id="uhr-an" type="checkbox"> <span data-i18n="display.clock">Clock</span></label>
     <label class="check"><input id="demo-an" type="checkbox"> <span data-i18n="demo.link">Demo</span></label>
     <p id="form-fehler"></p>
     <button type="submit" data-i18n="action.save">Save</button>
     <a class="back" href="index.html" data-i18n="set.back">Back to the face</a>
   </form>
+  <details id="preview-reactions">
+    <summary data-i18n="preview.summary">Reactions</summary>
+    <p data-i18n="preview.help">A quiet list for trying each reaction. The first tap on the face unlocks the sound.</p>
+    <div id="preview-list"></div>
+  </details>
   <footer class="fuss">
-    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.0.0</a>
+    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.1.0</a>
     <a class="logo-only" href="https://www.herrvonundzu.eu/digitalisierung-automatisierung-4">
       <img src="assets/brand/hvuz-logo.jpg" width="22" height="22" alt="HVUZ">
     </a>

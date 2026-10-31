@@ -512,6 +512,182 @@
     return C;
   }
 
+  // web/wahl.js
+  function waehleIndex(n, letzte, rnd) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const menge = n > 1 ? n : 1;
+    let pick = Math.floor(Number(zufall()) * menge);
+    if (!(pick >= 0) || pick >= menge) pick = 0;
+    if (letzte == null || pick !== letzte || menge === 1) return pick;
+    let hop = Math.floor(Number(zufall()) * (menge - 1));
+    if (!(hop >= 0) || hop >= menge - 1) hop = 0;
+    return (letzte + hop + 1) % menge;
+  }
+
+  // web/blick.js
+  var BLINK_ARTEN = ["einfach", "doppelt", "schlaf", "halb"];
+  var GLANCES = ["links", "rechts", "oben", "obenlinks", "obenrechts"];
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+  function clamp012(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    return clamp(n, 0, 1);
+  }
+  function waehleBlinzel(letzte, rnd) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const r = Number(zufall());
+    let art = "einfach";
+    if (r > 0.84) art = "schlaf";
+    else if (r > 0.68) art = "halb";
+    else if (r > 0.48) art = "doppelt";
+    if (art !== letzte) return art;
+    const rest = [];
+    for (let i = 0; i < BLINK_ARTEN.length; i++) if (BLINK_ARTEN[i] !== letzte) rest.push(BLINK_ARTEN[i]);
+    return rest[waehleIndex(rest.length, null, zufall)];
+  }
+  function blinkPause(lebendigkeit, art, rnd) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const live = clamp012(lebendigkeit);
+    const lo = 4.8 - live * 2.8;
+    const hi = 8.2 - live * 3.6;
+    let t = lo + Number(zufall()) * (hi - lo);
+    if (!(t > 0)) t = lo;
+    if (art === "doppelt") t += 0.35;
+    if (art === "schlaf") t += 0.8;
+    return t;
+  }
+  function blickIntervall(lebendigkeit, rnd) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const live = clamp012(lebendigkeit);
+    const lo = 2.8 - live * 1.5;
+    const hi = 6.4 - live * 3.1;
+    const t = lo + Number(zufall()) * Math.max(0.2, hi - lo);
+    return t > 0.4 ? t : 0.4;
+  }
+  function waehleBlick(letzte, rnd, lebendigkeit, hatMerker) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const live = clamp012(lebendigkeit);
+    const r = Number(zufall());
+    const pRuhe = 0.58 - live * 0.36;
+    const pSacc = pRuhe + 0.22 + live * 0.12;
+    let art = "ruhe";
+    if (r < pRuhe) art = "ruhe";
+    else if (r < pSacc) art = "saccade";
+    else if (hatMerker && r > 0.9 - live * 0.06) art = "gemerkt";
+    else art = GLANCES[waehleIndex(GLANCES.length, null, zufall)];
+    if (art !== "ruhe" && art === letzte) {
+      const rest = ["links", "rechts", "oben", "obenlinks", "obenrechts", "saccade"];
+      const i = rest.indexOf(art);
+      const hop = waehleIndex(rest.length - 1, null, zufall);
+      art = rest[(Math.max(0, i) + hop + 1) % rest.length];
+    }
+    return art;
+  }
+  function zielVon(art, rnd, merker) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    if (art === "gemerkt" && merker) {
+      return {
+        gx: merker.gx * 0.75,
+        gy: merker.gy * 0.75,
+        tilt: -merker.gx * 5,
+        roll: merker.gx * 2.2,
+        art
+      };
+    }
+    if (art === "saccade") {
+      const gx = (Number(zufall()) - 0.5) * 0.34;
+      const gy = (Number(zufall()) - 0.35) * 0.28;
+      return { gx, gy, tilt: gx * -6, roll: gx * 3, art };
+    }
+    const tabelle = {
+      ruhe: [0, 0, 0, 0],
+      links: [-0.64, 0.06, 6, -2.4],
+      rechts: [0.64, 0.05, -6, 2.4],
+      oben: [0.04, 0.58, 1.5, 0],
+      obenlinks: [-0.46, 0.52, 7, -3],
+      obenrechts: [0.48, 0.5, -7, 3]
+    };
+    const v = tabelle[art] || tabelle.ruhe;
+    return { gx: v[0], gy: v[1], tilt: v[2], roll: v[3], art };
+  }
+  function drift(t, seed) {
+    const s = Number(seed) || 0;
+    const zeit = Number(t) || 0;
+    return {
+      gx: 0.04 * Math.sin(zeit * 0.31 + s),
+      gy: 0.026 * Math.sin(zeit * 0.22 + s * 1.3)
+    };
+  }
+  function blickZumPunkt(x, y, w, h) {
+    const ww = w > 1 ? w : 1;
+    const hh = h > 1 ? h : 1;
+    const nx = (Number(x) / ww - 0.5) * 2;
+    const ny = (Number(y) / hh - 0.5) * 2;
+    return {
+      gx: clamp(nx * 0.62, -0.78, 0.78),
+      gy: clamp(-ny * 0.55, -0.5, 0.72)
+    };
+  }
+  function createBlick(rnd) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    let lebendigkeit = 0.7;
+    let naechster = 0.7 + Number(zufall()) * 0.8;
+    let naechsterBlink = 2.2 + Number(zufall()) * 1.6;
+    let letzteArt = "ruhe";
+    let letzteBlink = null;
+    let ziel = zielVon("ruhe", zufall, null);
+    let tilt = 0;
+    let roll = 0;
+    let seed = Number(zufall()) * Math.PI * 2;
+    let merker = null;
+    const aus = { gx: 0, gy: 0, tilt: 0, roll: 0, art: "ruhe", blink: "" };
+    return {
+      setLebendigkeit(v) {
+        lebendigkeit = clamp012(v);
+      },
+      merke(gx, gy, now) {
+        merker = { gx, gy, bis: (Number(now) || 0) + 18 };
+      },
+      halte(bis) {
+        if (bis > naechster) naechster = bis;
+      },
+      bis(zeit) {
+        naechster = Number(zeit) || 0;
+      },
+      tick(now, dt) {
+        const zeit = Number(now) || 0;
+        const schritt = dt > 0 ? dt : 0.016;
+        const frisch = !!(merker && zeit < merker.bis);
+        if (zeit >= naechster) {
+          const art = waehleBlick(letzteArt, zufall, lebendigkeit, frisch);
+          letzteArt = art;
+          ziel = zielVon(art, zufall, frisch ? merker : null);
+          naechster = zeit + blickIntervall(lebendigkeit, zufall);
+        }
+        const live = 0.55 + lebendigkeit * 0.65;
+        const d = drift(zeit, seed);
+        aus.gx = clamp(ziel.gx + d.gx * live, -0.9, 0.9);
+        aus.gy = clamp(ziel.gy + d.gy * live, -0.62, 0.82);
+        const folgen = Math.min(1, schritt * 2.1);
+        tilt += ((ziel.tilt || 0) - tilt) * folgen;
+        roll += ((ziel.roll || 0) - roll) * folgen;
+        aus.tilt = tilt;
+        aus.roll = roll;
+        aus.art = ziel.art || "ruhe";
+        aus.blink = "";
+        if (zeit >= naechsterBlink) {
+          const art = waehleBlinzel(letzteBlink, zufall);
+          letzteBlink = art;
+          aus.blink = art;
+          naechsterBlink = zeit + blinkPause(lebendigkeit, art, zufall);
+        }
+        return aus;
+      }
+    };
+  }
+
   // web/engine.js
   var Augen = class {
     constructor(clips, rnd = Math.random) {
@@ -525,8 +701,24 @@
       this.nextBlink = 3;
       this.nextGlance = 4;
       this.glance = [0, 0];
+      this.blick = createBlick(rnd);
+      this.blinks = [];
+      this.halb = false;
+      this.schlafBlink = -10;
+      this.touch = null;
+      this.lebendigkeit = 0.7;
       this.onEnde = null;
       this.set("03_idle");
+    }
+    setLebendigkeit(v) {
+      this.lebendigkeit = v;
+      if (this.blick) this.blick.setLebendigkeit(v);
+    }
+    // Look toward a touch. gx/gy are gaze targets, about -1..1. Angry and sleep ignore it.
+    schau(gx, gy) {
+      this.touch = { gx, gy, t0: this.now, dur: 1.25 };
+      this.blick.halte(this.now + 1.25);
+      this.blick.merke(gx, gy, this.now);
     }
     set(name) {
       const prev = this.c && this.c.name;
@@ -558,26 +750,53 @@
       const live = this.c.name === "03_idle";
       let [tgt, blinks, ring] = this.c.fn(t);
       const p = __spreadValues(__spreadValues({}, DEFAULT), tgt);
+      let z = null;
       if (live) {
-        p.scale = 1 + 0.025 * Math.sin(2 * Math.PI * t / 4);
-        p.dy = 8e-3 * Math.sin(2 * Math.PI * t / 4);
-        if (this.now > this.nextGlance) {
-          const weit = this.rnd() < 1 / 3, r = weit ? 0.9 : 0.35, w = this.rnd() * 2 * Math.PI;
-          this.glance = [this.rnd() < 1 / 3 ? 0 : r * Math.cos(w), this.rnd() < 1 / 3 ? 0 : r * Math.sin(w)];
-          this.nextGlance = this.now + 1.2 + this.rnd() * 3;
+        p.scale = 1 + 0.02 * Math.sin(2 * Math.PI * t / 4.6);
+        p.dy = 8e-3 * Math.sin(2 * Math.PI * t / 5.2) + 4e-3 * Math.sin(2 * Math.PI * t / 9.5);
+        z = this.blick.tick(this.now, dt);
+        p.gx = z.gx;
+        p.gy = z.gy;
+        p.tilt = z.tilt;
+        p.roll = z.roll;
+        if (Math.abs(z.tilt) > 1) {
+          p.sx *= 1 + Math.min(0.06, Math.abs(z.tilt) * 8e-3);
+          p.sy *= 1 - Math.min(0.04, Math.abs(z.tilt) * 4e-3);
         }
-        p.gx = this.glance[0];
-        p.gy = this.glance[1];
+      }
+      if (this.touch && this.c.name !== "15_angry" && this.c.name !== "01_schlafen") {
+        const age = this.now - this.touch.t0;
+        if (age >= 0 && age < this.touch.dur * 0.72) {
+          p.gx = this.touch.gx;
+          p.gy = this.touch.gy;
+        } else if (age >= this.touch.dur) this.touch = null;
       }
       const loopy = live || ["05_zuhoeren", "06_nachdenken", "12_musik_an", "15_angry"].includes(this.c.name);
-      if (loopy && this.now > this.nextBlink) {
-        this.blinkAt = this.now;
+      if (live && z && z.blink) {
+        this.halb = z.blink === "halb";
+        if (z.blink === "doppelt") this.blinks = [this.now, this.now + 0.3];
+        else if (z.blink === "schlaf") {
+          this.blinks = [];
+          this.schlafBlink = this.now;
+        } else this.blinks = [this.now];
+      } else if (!live && loopy && this.now > this.nextBlink) {
+        this.blinks = [this.now];
+        this.halb = false;
         this.nextBlink = this.now + (this.rnd() < 0.25 ? 0.3 : 3 + this.rnd() * 5);
       }
       p.gx = this.sgx.step(p.gx, dt);
       p.gy = this.sgy.step(p.gy, dt);
       p.scale = this.ssc.step(p.scale, dt);
-      let m = blinkMul(this.now, [this.blinkAt]);
+      const zeiten = this.blinks;
+      const hatte = this.blinkAt > -5;
+      if (hatte) zeiten.push(this.blinkAt);
+      let m = blinkMul(this.now, zeiten);
+      if (hatte) zeiten.pop();
+      if (live && this.halb) m = 1 - (1 - m) * 0.42;
+      if (live && this.schlafBlink > 0) {
+        const u = (this.now - this.schlafBlink) / 0.92;
+        if (u >= 0 && u < 1) m = Math.min(m, 1 - 0.5 * Math.sin(Math.PI * u));
+      }
       if (!live) m = Math.min(m, blinkMul(t, blinks));
       p.sy *= m;
       p.sx *= 1 + 0.15 * (1 - m) / (1 - P.BLINK_MIN);
@@ -1430,6 +1649,8 @@
       "hint.hear": "tap me to hear me",
       "hint.forget": "Don't forget",
       "hint.demo": "Paper bin",
+      "preview.summary": "Reactions",
+      "preview.help": "A quiet list for trying each reaction. The first tap on the face unlocks the sound.",
       "cmd.help": "A script entity, or a service and a target, such as script.eye_music_on or light.turn_on/light.living_room.",
       "cmd.musicOn": "Music on",
       "cmd.musicOff": "Music off",
@@ -1439,6 +1660,8 @@
       "display.mode": "View",
       "display.sleep": "Sleep after minutes (0 = never)",
       "display.sound": "Sound",
+      "display.volume": "Volume",
+      "display.liveliness": "Liveliness",
       "display.stateName": "State name",
       "display.caption": "Status line",
       "display.captionHelp": "A short line under the eyes. Tap it for details. When it is off, a faint mark at the bottom brings it back.",
@@ -1738,6 +1961,8 @@
       "hint.hear": "tipp mich an, dann h\xF6rst du mich",
       "hint.forget": "Nicht vergessen",
       "hint.demo": "Papiertonne",
+      "preview.summary": "Reaktionen",
+      "preview.help": "Eine stille Liste, um jede Reaktion zu pr\xFCfen. Der erste Tipp auf das Gesicht schaltet den Ton frei.",
       "cmd.help": "Eine Skript-Entity oder ein Dienst mit Ziel, zum Beispiel script.eye_music_on oder light.turn_on/light.living_room.",
       "cmd.musicOn": "Musik an",
       "cmd.musicOff": "Musik aus",
@@ -1747,6 +1972,8 @@
       "display.mode": "Ansicht",
       "display.sleep": "Einschlafen nach Minuten (0 = nie)",
       "display.sound": "Ton",
+      "display.volume": "Lautst\xE4rke",
+      "display.liveliness": "Lebendigkeit",
       "display.stateName": "Zustandsname",
       "display.caption": "Statuszeile",
       "display.captionHelp": "Eine kurze Zeile unter den Augen. Tippen \xF6ffnet die Details. Ist sie aus, holt eine schwache Markierung unten sie zur\xFCck.",
@@ -2087,6 +2314,8 @@
     reminderAckScript: "script.eye_hinweis_quittieren",
     kamera: "",
     ton: true,
+    lebendigkeit: 0.7,
+    lautstaerke: 0.8,
     label: false,
     caption: true,
     uhr: false,
@@ -2216,6 +2445,12 @@
       return null;
     }
   }
+  function einheit(v, fallback) {
+    let n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n > 1) n /= 100;
+    return Math.max(0, Math.min(1, n));
+  }
   function nurBekannte(obj) {
     const out = {};
     if (!obj || typeof obj !== "object") return out;
@@ -2249,6 +2484,8 @@
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
+    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.7);
+    if ("lautstaerke" in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
     if ("uhr" in out) out.uhr = !!out.uhr;
@@ -2424,6 +2661,10 @@
     if (p.get("label") === "1") n.label = true;
     if (p.get("ton") === "0") n.ton = false;
     if (p.get("ton") === "1") n.ton = true;
+    const live = p.get("live") || p.get("liveliness") || p.get("lebendigkeit");
+    if (live != null && live !== "" && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
+    const vol = p.get("vol") || p.get("volume");
+    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = einheit(vol, n.lautstaerke);
     const modus = normModus(p.get("mode") || p.get("modus") || p.get("theme"));
     if (modus) n.modus = modus;
     const licht = String(p.get("licht_profil") || p.get("light") || "").trim().toLowerCase();
@@ -3977,15 +4218,29 @@
   // web/demo.js
   var DEMO_REIHE = [
     "hallo",
+    "surprised",
+    "startled",
     "zuhoeren",
+    "curious",
     "nachdenken",
+    "thinking",
     "verstanden",
+    "nod",
     "erledigt",
+    "happy",
+    "pleased",
     "lachen",
+    "shy",
     "nicht_verstanden",
+    "confused",
+    "sad",
     "angry",
+    "relieved",
+    "sleepy",
     "schlafen",
     "blicke",
+    "grumpy",
+    "content",
     "fehler",
     "musik_an"
   ];
@@ -4245,6 +4500,458 @@
     return quelle === "ha";
   }
 
+  // web/reaktionen.js
+  var FELDER = ["gx", "gy", "roll", "dx", "dy", "scale", "sx", "sy", "tilt", "lidT", "lidA", "happy", "bright", "sep"];
+  var EINS = { scale: 1, sx: 1, sy: 1, bright: 1, sep: 1 };
+  var REAKTION_IDS = [
+    "surprised",
+    "curious",
+    "shy",
+    "pleased",
+    "thinking",
+    "confused",
+    "nod",
+    "sad",
+    "happy",
+    "relieved",
+    "sleepy",
+    "startled",
+    "grumpy",
+    "content"
+  ];
+  var SATZ = {};
+  for (let i = 0; i < REAKTION_IDS.length; i++) SATZ[REAKTION_IDS[i]] = true;
+  function istReaktion(id) {
+    return !!SATZ[id];
+  }
+  function spur(dauer, werte) {
+    const n = werte.length;
+    const keys = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0 : dauer * i / (n - 1);
+      keys[i] = [t, werte[i], i === 0 ? "lin" : "io"];
+    }
+    return keys;
+  }
+  function baue(phrase, dur, n, fn) {
+    const liste2 = [];
+    for (let i = 0; i < n; i++) {
+      const dauer = dur * (0.92 + i * 0.05);
+      const roh = fn(i);
+      const rend = { phrase, dur: dauer, index: i };
+      for (const key in roh) {
+        if (Object.prototype.hasOwnProperty.call(roh, key)) rend[key] = spur(dauer, roh[key]);
+      }
+      liste2.push(rend);
+    }
+    return liste2;
+  }
+  function seite(i) {
+    if (i % 3 === 2) return 0;
+    return i % 2 === 0 ? -1 : 1;
+  }
+  var REAKTIONEN = {
+    surprised: baue("startle", 0.88, 4, (i) => {
+      const s = seite(i);
+      const hoch = i === 2 ? 0.34 : 0.1;
+      return {
+        scale: [1, 1.14, 1.04, 1],
+        sy: [1, 1.16, 1.05, 1],
+        sx: [1, 0.9, 0.97, 1],
+        sep: [1, 1.07, 1.03, 1],
+        gy: [0, hoch, hoch * 0.4, 0],
+        gx: [0, s * 0.2, s * 0.08, 0],
+        dy: [0, 0.035, 0, 0]
+      };
+    }),
+    curious: baue("curious", 1.4, 4, (i) => {
+      const s = i % 2 === 0 ? -1 : 1;
+      const seit = (i === 2 ? 0.16 : 0.52) * (i === 3 ? 1 : s);
+      const hoch = 0.4 + i % 3 * 0.1;
+      return {
+        gx: [0, seit, seit * 0.72, 0.04 * s],
+        gy: [0, hoch, hoch * 0.82, 0.08],
+        tilt: [0, -s * (5 + i), -s * 3.5, 0],
+        roll: [0, s * 2.4, s * 1.2, 0],
+        sy: [1, 1.06, 1.04, 1],
+        scale: [1, 1.03, 1.02, 1]
+      };
+    }),
+    shy: baue("shy", 1.28, 4, (i) => {
+      const s = i % 2 === 0 ? -1 : 1;
+      return {
+        gx: [0, s * (0.28 + i * 0.04), s * 0.36, s * 0.1],
+        gy: [0, -0.26, -0.34, -0.08],
+        sy: [1, 0.9, 0.84, 0.96],
+        happy: [0, 0.12, 0.32, 0.08],
+        tilt: [0, s * (4 + i), s * 5, 0],
+        scale: [1, 0.97, 0.95, 1]
+      };
+    }),
+    pleased: baue("happy", 1.15, 4, (i) => {
+      const s = seite(i);
+      return {
+        happy: [0, 0.4, 0.58 + i * 0.03, 0.16],
+        sx: [1, 1.06, 1.1, 1],
+        sy: [1, 0.94, 0.9, 1],
+        dy: [0, 0.015, 0.028, 0],
+        gx: [0, s * 0.1, 0, 0]
+      };
+    }),
+    thinking: baue("think", 1.55, 3, (i) => {
+      const s = i === 1 ? 1 : -1;
+      const seit = i === 2 ? 0.12 : 0.48;
+      return {
+        gx: [0, s * seit, s * seit * 0.85, s * 0.16],
+        gy: [0, 0.5, 0.62, 0.28],
+        scale: [1, 0.95, 0.94, 0.98],
+        lidT: [0, 0.05, 0.1, 0.04],
+        tilt: [0, -s * 4, -s * 5, -s]
+      };
+    }),
+    confused: baue("curious", 1.35, 3, (i) => {
+      const s = i === 1 ? -1 : 1;
+      return {
+        roll: [0, s * 7, -s * 5, s * 2, 0],
+        lidA: [0, 12 + i, 8, 0],
+        gy: [0, -0.1, 0.16, 0],
+        gx: [0, s * 0.22, -s * 0.14, 0],
+        scale: [1, 0.93, 0.97, 1],
+        sy: [1, 0.96, 1.02, 1]
+      };
+    }),
+    nod: baue("yes", 1.05, 3, (i) => {
+      const hop = 0.045 + i * 0.012;
+      const zweiter = i === 0 ? 0 : -hop * 0.7;
+      return {
+        dy: [0, -hop, 0.012, zweiter, 0],
+        scale: [1, 0.98, 1.02, 1, 1],
+        happy: [0, 0.05, i === 2 ? 0.28 : 0.08, 0]
+      };
+    }),
+    sad: baue("sad", 1.55, 3, (i) => {
+      const s = i === 2 ? -0.16 : i === 1 ? 0.14 : 0;
+      return {
+        gy: [0, -0.28, -0.4, -0.22],
+        gx: [0, s, s * 1.2, s * 0.4],
+        lidT: [0, 0.16, 0.28, 0.14],
+        sy: [1, 0.86, 0.76, 0.9],
+        bright: [1, 0.78, 0.66, 0.82],
+        scale: [1, 0.98, 0.96, 0.98]
+      };
+    }),
+    happy: baue("happy", 1.2, 4, (i) => {
+      const hop = 0.05 + i * 0.012;
+      const s = seite(i);
+      return {
+        dy: [0, hop, 0, i === 0 ? 0 : hop * 0.65, 0],
+        happy: [0, 0.7, 0.85, 0.45, 0.05],
+        sx: [1, 1.14, 1.18, 1.08, 1],
+        sy: [1, 0.82, 0.78, 0.9, 1],
+        gx: [0, s * 0.08, 0, 0]
+      };
+    }),
+    relieved: baue("relieved", 1.35, 3, (i) => ({
+      lidT: [0.2, 0.08, 0.02, 0],
+      happy: [0, 0.18 + i * 0.06, 0.46, 0.12],
+      dy: [0, -0.02, 0.03, 0],
+      scale: [0.96, 1.04, 1.02, 1],
+      sy: [0.88, 1.04, 1, 1],
+      gx: [0, (i - 1) * 0.12, 0, 0]
+    })),
+    sleepy: baue("sleepy", 1.9, 3, (i) => ({
+      lidT: [0, 0.1, 0.24 + i * 0.04, 0.38],
+      gy: [0, -0.08, -0.26, -0.34],
+      sy: [1, 0.9, 0.74, 0.62],
+      bright: [1, 0.82, 0.64, 0.5],
+      scale: [1, 0.99, 0.96, 0.94],
+      gx: [0, (i - 1) * 0.06, 0, 0]
+    })),
+    startled: baue("startle", 0.72, 4, (i) => {
+      const s = seite(i);
+      return {
+        scale: [1, 1.2, 1.06, 1],
+        sy: [1, 1.22, 1.08, 1],
+        sx: [1, 0.88, 0.96, 1],
+        sep: [1, 1.09, 1.03, 1],
+        dy: [0, 0.045, 0, 0],
+        gx: [0, s * 0.16, s * 0.04, 0],
+        gy: [0, i === 2 ? 0.28 : 0.12, 0.04, 0]
+      };
+    }),
+    grumpy: baue("no", 1.12, 3, (i) => {
+      const s = i === 1 ? -1 : 1;
+      return {
+        lidT: [0, 0.18, 0.32, 0.14],
+        lidA: [0, -12, -18 - i, -6],
+        sy: [1, 0.84, 0.74, 0.9],
+        sx: [1, 1.05, 1.1, 1.02],
+        gx: [0, s * 0.26, -s * 0.16, 0],
+        scale: [1, 0.98, 0.97, 1]
+      };
+    }),
+    content: baue("content", 1.45, 3, (i) => ({
+      happy: [0, 0.28, 0.48 + i * 0.04, 0.32],
+      lidT: [0, 0.04, 0.1, 0.05],
+      scale: [1, 1.02, 1.04, 1.02],
+      dy: [0, 8e-3, 0.016, 8e-3],
+      sy: [1, 0.97, 0.94, 0.98],
+      gx: [0, (i - 1) * 0.08, 0, 0]
+    }))
+  };
+  function poseBei(rend, t) {
+    const p = {};
+    if (!rend) return p;
+    for (let i = 0; i < FELDER.length; i++) {
+      const key = FELDER[i];
+      const keys = rend[key];
+      if (keys && keys.length) p[key] = kf(keys, t);
+    }
+    return p;
+  }
+  function staerke(t, dur) {
+    const zeit = Number(t) || 0;
+    const laenge = dur > 0.2 ? dur : 0.2;
+    const ein = 0.09;
+    const aus = 0.26;
+    if (zeit <= 0 || zeit >= laenge) return 0;
+    if (zeit < ein) return zeit / ein;
+    if (zeit > laenge - aus) return (laenge - zeit) / aus;
+    return 1;
+  }
+  function mische(basis, extra, menge, mitBlick) {
+    const out = {};
+    const src = basis || {};
+    for (const key in src) {
+      if (Object.prototype.hasOwnProperty.call(src, key)) out[key] = src[key];
+    }
+    const s = Math.max(0, Math.min(1, Number(menge) || 0));
+    if (!extra || s <= 0) return out;
+    for (let i = 0; i < FELDER.length; i++) {
+      const key = FELDER[i];
+      if (extra[key] == null) continue;
+      if (!mitBlick && (key === "gx" || key === "gy")) continue;
+      const b = src[key] == null ? EINS[key] || 0 : src[key];
+      out[key] = b + (extra[key] - b) * s;
+    }
+    return out;
+  }
+  var TOUCH_POOL = ["curious", "shy", "pleased", "surprised"];
+  var HINWEIS_POOL = ["nod", "curious"];
+  var ACK_POOL = ["pleased", "nod"];
+  var FEHLER_POOL = ["confused", "sad"];
+  function createStupser(rnd, fensterMs) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const fenster = fensterMs > 0 ? fensterMs : 2600;
+    let zeiten = [];
+    let letzte = null;
+    return {
+      tipp(now) {
+        const t = Number(now) || 0;
+        const offen2 = [];
+        for (let i = 0; i < zeiten.length; i++) if (t - zeiten[i] < fenster) offen2.push(zeiten[i]);
+        offen2.push(t);
+        zeiten = offen2;
+        if (zeiten.length >= 3) {
+          zeiten = [];
+          letzte = null;
+          return "grumpy";
+        }
+        const index = waehleIndex(TOUCH_POOL.length, letzte, zufall);
+        letzte = index;
+        return TOUCH_POOL[index];
+      }
+    };
+  }
+  function createReaktionLauf(rnd) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const letzte = {};
+    const pools = {};
+    let zuletzt = -10;
+    return {
+      aus(pool) {
+        if (!pool || !pool.length) return "";
+        const key = pool.join("|");
+        const index = waehleIndex(pool.length, pools[key] == null ? null : pools[key], zufall);
+        pools[key] = index;
+        return pool[index];
+      },
+      start(id, now, opt) {
+        const liste2 = REAKTIONEN[id];
+        if (!liste2) return null;
+        const o = opt || {};
+        const t = Number(now) || 0;
+        const pause = id === "grumpy" ? 0.32 : 0.48;
+        if (!o.erzwingen && t - zuletzt < pause) return null;
+        const index = waehleIndex(liste2.length, letzte[id] == null ? null : letzte[id], zufall);
+        letzte[id] = index;
+        zuletzt = t;
+        return liste2[index];
+      }
+    };
+  }
+
+  // web/stimme.js
+  var MUSTER = {
+    happy: { count: [3, 4], base: 520, step: 68, dur: 0.08, gap: 0.045, glide: 46, form: "up" },
+    curious: { count: [2, 3], base: 400, step: 96, dur: 0.11, gap: 0.06, glide: 140, form: "up" },
+    sad: { count: [2, 3], base: 330, step: -58, dur: 0.15, gap: 0.07, glide: -70, form: "down" },
+    think: { count: [3, 4], base: 370, step: 22, dur: 0.09, gap: 0.075, glide: 0, form: "wobble" },
+    startle: { count: [1, 2], base: 620, step: 70, dur: 0.06, gap: 0.03, glide: 160, form: "up" },
+    sleepy: { count: [1, 2], base: 250, step: -28, dur: 0.26, gap: 0.08, glide: -36, form: "down" },
+    yes: { count: [2, 2], base: 470, step: 100, dur: 0.075, gap: 0.04, glide: 36, form: "up" },
+    no: { count: [2, 3], base: 390, step: -84, dur: 0.085, gap: 0.05, glide: -48, form: "down" },
+    shy: { count: [2, 3], base: 360, step: 18, dur: 0.11, gap: 0.065, glide: -24, form: "down" },
+    content: { count: [2, 2], base: 340, step: 12, dur: 0.15, gap: 0.08, glide: -16, form: "down" },
+    relieved: { count: [2, 3], base: 430, step: 36, dur: 0.11, gap: 0.055, glide: 28, form: "up" }
+  };
+  var VARIANTEN = 3;
+  var MASTER = 0.2;
+  var MAX_DUR = 1.45;
+  function zahl(rnd) {
+    const n = Number(typeof rnd === "function" ? rnd() : Math.random());
+    return Number.isFinite(n) ? n : 0;
+  }
+  function silben(muster, index, rnd) {
+    const lo = muster.count[0];
+    const hi = muster.count[1];
+    let n = lo + Math.floor(zahl(rnd) * (hi - lo + 1));
+    if (index === 1 && n > lo) n -= 1;
+    if (index === 2 && n < hi) n += 1;
+    if (n < 1) n = 1;
+    if (n > 5) n = 5;
+    return n;
+  }
+  function bauePhrase(id, rnd, letzte) {
+    const zufall = typeof rnd === "function" ? rnd : Math.random;
+    const key = MUSTER[id] ? id : "yes";
+    const muster = MUSTER[key];
+    const index = waehleIndex(VARIANTEN, letzte == null ? null : letzte, zufall);
+    const pitch = (0.94 + index * 0.045) * (0.96 + zahl(zufall) * 0.08);
+    const tempo = (index === 1 ? 1.12 : index === 2 ? 0.9 : 1) * (0.94 + zahl(zufall) * 0.12);
+    const n = silben(muster, index, zufall);
+    const notes = [];
+    let t = 0.02;
+    for (let i = 0; i < n; i++) {
+      const u = n === 1 ? 1 : i / (n - 1);
+      let freq = muster.base * pitch + muster.step * i;
+      if (muster.form === "wobble") freq += Math.sin(i * 1.7 + index) * 28;
+      freq = Math.max(180, Math.min(980, freq));
+      const dur = muster.dur / tempo * (i === n - 1 ? 1.12 : 0.94);
+      const glide = Math.max(160, Math.min(1100, freq + muster.glide * (0.55 + 0.45 * u)));
+      notes.push({
+        at: t,
+        dur,
+        freq,
+        glide,
+        warble: (zahl(zufall) - 0.5) * 0.045,
+        gain: muster.form === "startle" || key === "startle" ? 0.5 : 0.42 + 0.12 * (1 - u * 0.35)
+      });
+      t += dur + muster.gap / tempo;
+    }
+    let ende = notes[notes.length - 1].at + notes[notes.length - 1].dur;
+    if (ende > MAX_DUR) {
+      const k = MAX_DUR / ende;
+      for (let i = 0; i < notes.length; i++) {
+        notes[i].at *= k;
+        notes[i].dur *= k;
+      }
+      ende = MAX_DUR;
+    }
+    return { id: key, index, notes, dur: ende };
+  }
+  function pulsHuelle(now, pulse2) {
+    let a = 0;
+    if (!pulse2 || !pulse2.length) return 0;
+    for (let i = 0; i < pulse2.length; i++) {
+      const p = pulse2[i];
+      const ms = p.ms > 1 ? p.ms : 1;
+      const u = (now - p.at) / ms;
+      if (u >= 0 && u < 1) {
+        const bell = Math.sin(Math.PI * u) * (p.amp > 0 ? p.amp : 0);
+        if (bell > a) a = bell;
+      }
+    }
+    return a > 1 ? 1 : a;
+  }
+  function scheinFarbe(alarm, rgb) {
+    if (alarm) return "rgba(255, 18, 8, 0.88)";
+    const c = rgb && rgb.length >= 3 ? rgb : [255, 106, 0];
+    const r = c[0] | 0;
+    const g = c[1] | 0;
+    const b = c[2] | 0;
+    if (r > 200 && g < 60 && b < 60) return "rgba(255, 106, 0, 0.8)";
+    return "rgba(" + r + ", " + g + ", " + b + ", 0.8)";
+  }
+  function createStimme(opt) {
+    const o = opt || {};
+    const rnd = typeof o.rnd === "function" ? o.rnd : Math.random;
+    const cooldown = o.cooldownMs == null ? 1200 : Number(o.cooldownMs);
+    const letzte = {};
+    let frei = 0;
+    let ziel = null;
+    function ausgang(ctx) {
+      if (ziel && ziel.ctx === ctx) return ziel.node;
+      const node = ctx.createGain();
+      node.gain.value = MASTER;
+      node.connect(ctx.destination);
+      ziel = { ctx, node };
+      return node;
+    }
+    function note(ctx, dest, t0, n, laut) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      const f0 = n.freq;
+      osc.frequency.setValueAtTime(f0, t0);
+      if (n.warble) osc.frequency.linearRampToValueAtTime(f0 * (1 + n.warble), t0 + n.dur * 0.42);
+      osc.frequency.linearRampToValueAtTime(n.glide || f0, t0 + n.dur);
+      const peak = Math.max(2e-4, n.gain * MASTER * laut);
+      g.gain.setValueAtTime(1e-4, t0);
+      g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.028, n.dur * 0.35));
+      g.gain.exponentialRampToValueAtTime(1e-4, t0 + n.dur);
+      osc.connect(g);
+      g.connect(dest);
+      try {
+        osc.start(t0);
+        osc.stop(t0 + n.dur + 0.04);
+      } catch (err) {
+      }
+    }
+    return {
+      plan(id, now) {
+        const t = Number(now) || 0;
+        if (t < frei) return null;
+        const phrase = bauePhrase(id, rnd, letzte[id] == null ? null : letzte[id]);
+        letzte[id] = phrase.index;
+        frei = t + (cooldown > 0 ? cooldown : 0);
+        return phrase;
+      },
+      spiel(ctx, phrase, volume, nowMs) {
+        if (!phrase || !phrase.notes) return [];
+        const start = Number(nowMs) || 0;
+        const pulses = [];
+        for (let i = 0; i < phrase.notes.length; i++) {
+          const n = phrase.notes[i];
+          pulses.push({
+            at: start + n.at * 1e3,
+            ms: Math.max(80, n.dur * 1e3),
+            amp: 0.45 + Math.min(0.4, n.gain)
+          });
+        }
+        const laut = Math.max(0, Math.min(1, Number(volume) || 0));
+        if (!ctx || ctx.state !== "running" || !(laut > 0)) return pulses;
+        const dest = ausgang(ctx);
+        const t0 = ctx.currentTime || 0;
+        for (let i = 0; i < phrase.notes.length; i++) {
+          const n = phrase.notes[i];
+          note(ctx, dest, t0 + n.at, n, laut);
+        }
+        return pulses;
+      }
+    };
+  }
+
   // web/app.js
   function __legacyBoot() {
     return __async(this, null, function* () {
@@ -4270,8 +4977,12 @@
       let locale = resolveLocale({ query: q.get("lang"), stored: konfig.lang, nav: navigator.language });
       const audio = createAudio(CLIPS, ["15_hmmm_a", "16_hmmm_b", "17_hmmm_c", "18_hmmm_d", HINWEIS_TON]);
       audio.setTon(konfig.ton);
+      const stimme = createStimme();
+      const reaktionen = createReaktionLauf();
+      const stupser = createStupser();
       const demoMusik = createDemoMusic();
       const augen = new Augen(CLIPS);
+      augen.setLebendigkeit(konfig.lebendigkeit);
       const waechter = createWaechter(konfig.schlafSekunden);
       const wecker = createWecker();
       const hinweis = createHinweis();
@@ -4298,6 +5009,14 @@
       let eckStart = null;
       let last = performance.now();
       let lastDraw = 0;
+      let reaktion = null;
+      let scheinPulse = [];
+      let scheinDeckkraft = -1;
+      let scheinZuletzt = "";
+      let stoerungAktiv = false;
+      let druck = null;
+      let langTimer = 0;
+      const LANG_MS = 720;
       function el(id) {
         return document.getElementById(id);
       }
@@ -4325,19 +5044,93 @@
       function gehoert() {
         return !!(audioFrei && audio.status().freigegeben);
       }
+      let reaktionHoren = "";
       function ersterKontakt() {
+        const neu = !audioFrei;
         if (audioFrei) return;
         audioFrei = true;
         syncHearHint();
         audio.unlock().catch(() => {
         });
+        if (neu && reaktionHoren) {
+          const id = reaktionHoren;
+          reaktionHoren = "";
+          spieleReaktion(id, { ton: true, erzwingen: true });
+        }
+      }
+      function pegel(gain) {
+        const laut = konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke;
+        return Math.max(0, Math.min(1, (gain == null ? 1 : gain) * laut));
       }
       function spieleDatei(name, gain) {
         if (!audioFrei || !konfig.ton || !name) return;
         audio.unlock().then(() => {
-          if (audio.status().freigegeben) audio.ton({ sound: name, gain: gain == null ? 1 : gain });
+          if (audio.status().freigegeben) audio.ton({ sound: name, gain: pegel(gain) });
         }).catch(() => {
         });
+      }
+      function merkePulse(pulses) {
+        if (!pulses || !pulses.length) return;
+        const jetzt = performance.now();
+        const bleiben = [];
+        for (let i = 0; i < scheinPulse.length; i++) if (scheinPulse[i].at + scheinPulse[i].ms > jetzt - 40) bleiben.push(scheinPulse[i]);
+        for (let i = 0; i < pulses.length; i++) bleiben.push(pulses[i]);
+        scheinPulse = bleiben.length > 16 ? bleiben.slice(bleiben.length - 16) : bleiben;
+      }
+      function sag(phraseId, gain) {
+        if (!phraseId || !konfig.ton) return;
+        const phrase = stimme.plan(phraseId, performance.now());
+        if (!phrase) return;
+        const laut = pegel(gain == null ? 1 : gain);
+        if (!audioFrei) {
+          merkePulse(stimme.spiel(null, phrase, 0, performance.now()));
+          return;
+        }
+        audio.unlock().then(() => {
+          const ctx = audio.context();
+          const frei = audio.status().freigegeben;
+          merkePulse(stimme.spiel(frei ? ctx : null, phrase, frei ? laut : 0, performance.now()));
+        }).catch(() => {
+        });
+      }
+      function spieleReaktion(id, opt) {
+        const o = opt || {};
+        const rend = reaktionen.start(id, augen.now, o);
+        if (!rend) return null;
+        const live = konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit;
+        const basis = o.staerke == null ? 1 : o.staerke;
+        reaktion = {
+          rend,
+          t0: augen.now,
+          staerke: basis * (0.4 + 0.6 * Math.max(0, Math.min(1, live))),
+          blick: o.blick !== false
+        };
+        if (o.ton !== false) sag(rend.phrase, o.gain == null ? 0.85 : o.gain);
+        return rend;
+      }
+      function legeReaktion(pose) {
+        if (!reaktion) return pose;
+        const t2 = augen.now - reaktion.t0;
+        if (t2 >= reaktion.rend.dur) {
+          reaktion = null;
+          return pose;
+        }
+        const extra = poseBei(reaktion.rend, t2);
+        const s = staerke(t2, reaktion.rend.dur) * reaktion.staerke;
+        return mische(pose, extra, s, reaktion.blick);
+      }
+      function setzeSchein(puls, alarm, rgb) {
+        const node = el("schein");
+        if (!node) return;
+        const farbe = scheinFarbe(!!alarm, rgb);
+        if (farbe !== scheinZuletzt) {
+          scheinZuletzt = farbe;
+          node.style.boxShadow = "inset 0 0 90px 12px " + farbe;
+        }
+        const deckung = puls > 0.02 ? Math.max(0, Math.min(0.72, puls * 0.7)) : 0;
+        if (Math.abs(deckung - scheinDeckkraft) < 0.02) return;
+        scheinDeckkraft = deckung;
+        node.style.opacity = String(deckung);
       }
       function istStoerung() {
         if (schauLaeuft || haStatus === "mock") return false;
@@ -4383,18 +5176,19 @@
         clearInterval(alarmPuls);
         alarmPuls = 0;
       }
-      function tonFuer(kurz) {
+      function tonFuer(kurz, gainScale) {
         if (!audioFrei || !konfig.ton) return;
         const clip = BY[KURZ[kurz]];
         if (!clip) return;
+        const skala = gainScale == null ? 1 : gainScale;
         audio.unlock().then(() => {
           if (!audio.status().freigegeben) return;
           if (kurz !== "angry") stopAlarmTon();
           if (kurz === "angry" && clip.sound) {
-            audio.ton({ sound: clip.sound, gain: konfig.alarmStaerke === "normal" ? 0.6 : 1 });
+            audio.ton({ sound: clip.sound, gain: pegel((konfig.alarmStaerke === "normal" ? 0.6 : 1) * skala) });
             return;
           }
-          if (clip.sound) audio.ton(clip);
+          if (clip.sound) audio.ton({ sound: clip.sound, s_off: clip.s_off, gain: pegel((clip.gain == null ? 1 : clip.gain) * skala) });
         }).catch(() => {
         });
       }
@@ -4435,11 +5229,15 @@
         }
         if (kurz === "schlafen") waechter.einschlafen();
         else waechter.beruehrt();
+        if (kurz === "angry") reaktion = null;
         augen.set(KURZ[kurz]);
         bildKurz = kurz;
         letzterKurz = kurz;
         letzterWechsel = performance.now();
-        if (ton) tonFuer(kurz);
+        if (kurz === "schlafen" && ton) {
+          spieleReaktion("sleepy", { ton: true, erzwingen: true, staerke: 0.62, gain: 0.7 });
+          tonFuer(kurz, 0.28);
+        } else if (ton) tonFuer(kurz);
         zeichneCaption();
         syncDemoTrack();
         return true;
@@ -4454,12 +5252,16 @@
         augen.glance = [variante.gx, variante.gy];
         augen.nextGlance = augen.now + variante.hold;
         augen.nextBlink = augen.now + variante.hold + 2;
+        augen.schau(variante.gx, variante.gy);
+        if (augen.touch) augen.touch.dur = Math.max(0.7, variante.hold);
+        augen.blick.bis(augen.now + Math.max(0.7, variante.hold));
         const warte = Math.max(0, Math.round(variante.blink * 1e3));
         setTimeout(() => {
           augen.blinkAt = augen.now;
         }, warte);
         wachBis = performance.now() + variante.hold * 1e3;
-        spieleDatei(variante.sound, 0.75);
+        setTimeout(() => spieleDatei(variante.sound, 0.75), 180);
+        spieleReaktion("startled", { ton: true, blick: false, erzwingen: true, gain: 0.5 });
         zeichneCaption();
       }
       function zeigeHinweis(text, quelle) {
@@ -4482,6 +5284,9 @@
           }
         }
         wachBis = Math.max(wachBis, performance.now() + 1800);
+        if (!tuerAuf && bildKurz !== "angry") {
+          spieleReaktion(reaktionen.aus(HINWEIS_POOL), { ton: true, erzwingen: true, gain: 0.7 });
+        }
         if (node) node.hidden = false;
         const label = el("hinweis-label");
         if (label) label.textContent = t("hint.forget");
@@ -4499,6 +5304,9 @@
         const body = el("hinweis-text");
         if (body) body.textContent = "";
         if (ackAnHa(quelle) && ha && konfig.reminderAckScript) ha.callScript(konfig.reminderAckScript);
+        if (!tuerAuf && bildKurz !== "angry") {
+          spieleReaktion(reaktionen.aus(ACK_POOL), { ton: true, erzwingen: true, gain: 0.65 });
+        }
       }
       function zeigeDemoHinweis() {
         if (hinweis.offen && hinweisQuelle === "ha") return;
@@ -4509,7 +5317,10 @@
         if (offen2 === tuerAuf) return;
         tuerAuf = offen2;
         if (offen2) wendeZustand("angry", { ton: true, erzwingen: true });
-        else wendeZustand("idle", { ton: false, erzwingen: true });
+        else {
+          wendeZustand("idle", { ton: false, erzwingen: true });
+          spieleReaktion("relieved", { ton: true, erzwingen: true, gain: 0.7 });
+        }
       }
       function onStates(liste2) {
         if (!liste2) return;
@@ -4566,6 +5377,12 @@
         waechter.setPause(pausieren);
       }
       function sprungSchau(schritt) {
+        if (istReaktion(schritt.kurz)) {
+          if (bildKurz !== "idle") wendeZustand("idle", { ton: false, erzwingen: true });
+          spieleReaktion(schritt.kurz, { ton: true, erzwingen: true });
+          syncDemoTrack();
+          return;
+        }
         wendeZustand(schritt.kurz, { ton: true, erzwingen: true });
         syncDemoTrack();
       }
@@ -4626,12 +5443,23 @@
         if (document.visibilityState && document.visibilityState !== "visible") return;
         if (ha && ha.nudge) ha.nudge();
       }
+      function pruefeStoerung() {
+        const an = istStoerung();
+        if (!an) {
+          stoerungAktiv = false;
+          return;
+        }
+        if (stoerungAktiv || performance.now() < 2500 || tuerAuf || bildKurz === "angry") return;
+        stoerungAktiv = true;
+        spieleReaktion(reaktionen.aus(FEHLER_POOL), { ton: true, staerke: 0.55, gain: 0.45 });
+      }
       function frame(now) {
         tickSchau(now);
         const dt = Math.min(0.1, (now - last) / 1e3);
         last = now;
         syncPause();
-        const pose = augen.tick(dt);
+        pruefeStoerung();
+        const pose = legeReaktion(augen.tick(dt));
         if (!pauseAn && waechter.tick() === "einschlafen") {
           wecker.eingeschlafen();
           wendeZustand("schlafen", { ton: true });
@@ -4653,6 +5481,9 @@
           alarmStark: konfig.alarmStaerke !== "normal"
         });
         const ring = befehl.alarm ? [befehl.rgb, 1, null, "angry"] : augen.ring || [[255, 106, 0], 0.2, null];
+        const puls = pulsHuelle(now, scheinPulse);
+        if (puls > 0.02 && ring && !befehl.alarm) ring[1] = Math.min(1, (ring[1] || 0) + puls * 0.28);
+        setzeSchein(puls, !!befehl.alarm, befehl.alarm ? befehl.rgb : ring && ring[0]);
         renderer.render(pose, ring);
         requestAnimationFrame(frame);
       }
@@ -4662,9 +5493,14 @@
       starteHa();
       const startState = param("state", "zustand");
       const sequence = param("sequence", "sequenz");
+      const reaktionStart = param("reaction", "reaktion");
       if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-      if (param("tour", "ablauf") || konfig.demo && !startState && !sequence) starteSchau();
-      else if (sequence) {
+      if (param("tour", "ablauf") || konfig.demo && !startState && !sequence && !reaktionStart) starteSchau();
+      else if (reaktionStart && istReaktion(reaktionStart)) {
+        reaktionHoren = reaktionStart;
+        wendeZustand("idle", { ton: false, erzwingen: true });
+        spieleReaktion(reaktionStart, { ton: false, erzwingen: true });
+      } else if (sequence) {
         const namen = sequence.split(",").map((s) => s.trim()).filter(Boolean);
         const jede = Math.max(400, (+param("sequence_s", "sequenz_s") || 3) * 1e3);
         let i = 0;
@@ -4725,9 +5561,50 @@
           stoppeSchau();
           return;
         }
-        if (waechter.schlaeft) wendeZustand("hallo", { ton: true, erzwingen: true });
-        else waechter.beruehrt();
+        if (tuerAuf || bildKurz === "angry") {
+          waechter.beruehrt();
+          return;
+        }
+        schauAuf(e);
+        if (waechter.schlaeft) {
+          wendeZustand("hallo", { ton: true, erzwingen: true });
+          return;
+        }
+        waechter.beruehrt();
+        druck = { x: e.clientX, y: e.clientY, lang: false };
+        if (langTimer) clearTimeout(langTimer);
+        langTimer = setTimeout(() => {
+          langTimer = 0;
+          if (!druck) return;
+          druck.lang = true;
+          spieleReaktion("content", { ton: true, erzwingen: true, gain: 0.6 });
+        }, LANG_MS);
       });
+      onZeiger(document.body, "move", (e) => {
+        if (!druck || druck.lang) return;
+        if (Math.abs(e.clientX - druck.x) > 28 || Math.abs(e.clientY - druck.y) > 28) {
+          if (langTimer) clearTimeout(langTimer);
+          langTimer = 0;
+        }
+      });
+      onZeiger(document.body, "up", (e) => {
+        if (!druck) return;
+        const lang = druck.lang;
+        const moved = Math.abs(e.clientX - druck.x) > 28 || Math.abs(e.clientY - druck.y) > 28;
+        if (langTimer) clearTimeout(langTimer);
+        langTimer = 0;
+        druck = null;
+        if (lang || moved || zielId(e.target)) return;
+        const id = stupser.tipp(performance.now());
+        const live = konfig.lebendigkeit == null ? 0.7 : konfig.lebendigkeit;
+        if (id === "grumpy" || live >= 0.12) {
+          spieleReaktion(id, { ton: live > 0.15 || id === "grumpy", erzwingen: id === "grumpy" });
+        }
+      });
+      function schauAuf(e) {
+        const z = blickZumPunkt(e.clientX, e.clientY, window.innerWidth || 1, window.innerHeight || 1);
+        augen.schau(z.gx, z.gy);
+      }
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js").catch(() => {
         });
