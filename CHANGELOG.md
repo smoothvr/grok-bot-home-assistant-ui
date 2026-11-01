@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3] - 2026-11-01
+
+### Fixed
+
+- Each reaction tints the edge in its own colour. The showcase had been leaving the light on idle, so the glow never changed mood. Red is only grumpy, and the alarm while angry.
+- The voice envelope sets the level inside that colour's quiet-profile range, so a soft beep and a louder phrase read differently. After the phrase, colour and level ease back to idle over about 2.6 seconds.
+
 ## [2.2.2] - 2026-10-31
 
 ### Changed

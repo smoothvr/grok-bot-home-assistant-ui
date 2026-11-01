@@ -3,6 +3,7 @@
 
 import { kf } from './augen.js';
 import { waehleIndex } from './wahl.js';
+import { RING } from './zustaende.js';
 
 export const FELDER = ['gx', 'gy', 'roll', 'dx', 'dy', 'scale', 'sx', 'sy', 'tilt', 'lidT', 'lidA', 'happy', 'bright', 'sep'];
 const EINS = { scale: 1, sx: 1, sy: 1, bright: 1, sep: 1 };
@@ -18,6 +19,24 @@ for (let i = 0; i < REAKTION_IDS.length; i++) SATZ[REAKTION_IDS[i]] = true;
 export function istReaktion(id) {
   return !!SATZ[id];
 }
+
+// Edge tint for each reaction. Red is only grumpy. The quiet profile still supplies the field.
+export const STIMMUNG = {
+  surprised: { licht: 'sprechen', rgb: RING.hallo.slice() },
+  curious: { licht: 'zuhoeren', rgb: RING.zuhoeren.slice() },
+  shy: { licht: 'sprechen', rgb: [176, 150, 206] },
+  pleased: { licht: 'bestaetigt', rgb: RING.verstanden.slice() },
+  thinking: { licht: 'nachdenken', rgb: RING.nachdenken.slice() },
+  confused: { licht: 'sprechen', rgb: [255, 170, 64] },
+  nod: { licht: 'bestaetigt', rgb: [90, 220, 175] },
+  sad: { licht: 'sprechen', rgb: [126, 158, 204] },
+  happy: { licht: 'sprechen', rgb: RING.lachen.slice() },
+  relieved: { licht: 'bestaetigt', rgb: [170, 245, 200] },
+  sleepy: { licht: 'sprechen', rgb: RING.schlafen.slice() },
+  startled: { licht: 'sprechen', rgb: [255, 214, 140] },
+  grumpy: { licht: 'fehler', rgb: RING.fehler.slice() },
+  content: { licht: 'sprechen', rgb: [255, 186, 120] },
+};
 
 function spur(dauer, werte) {
   const n = werte.length;

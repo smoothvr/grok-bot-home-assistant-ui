@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // First-load sleep, the one-pass showcase, and the looping demo.
 import { DEMO_HOST } from './konfig.js';
-import { REAKTION_IDS } from './reaktionen.js';
+import { REAKTION_IDS, STIMMUNG } from './reaktionen.js';
 import {
   SHOW_PAUSE, LOOP_PAUSE, createSchleife, ersteRunde, ohneHaus, sollWillkommen, tippFenster,
 } from './empfang.js';
-import { glaettePegel, pegelAusHuelle } from './licht.js';
+import { RUHIG_STATES, glaettePegel, pegelAusHuelle, stimmungSchritt } from './licht.js';
 
 let fehler = 0;
 function assert(cond, msg) {
@@ -85,6 +85,31 @@ assert(Math.abs(pegelAusHuelle('fehler', 1, 'ruhig') - 0.85) < 1e-9, 'an error c
   const halb = glaettePegel(0.32, 0.42, 0.12);
   assert(halb > 0.32 && halb < 0.42, 'the level eases toward the phrase');
   assert(glaettePegel(0.32, 0.42, 0) === 0.32, 'no time means no jump');
+}
+
+{
+  function rot(rgb) {
+    return rgb[0] > 200 && rgb[1] < 80 && rgb[2] < 80;
+  }
+  const farben = {};
+  for (let i = 0; i < REAKTION_IDS.length; i++) {
+    const id = REAKTION_IDS[i];
+    const s = STIMMUNG[id];
+    assert(s && s.rgb && s.rgb.length === 3 && RUHIG_STATES[s.licht], `${id} tints the quiet edge`);
+    if (id === 'grumpy') assert(rot(s.rgb), 'grumpy is red');
+    else assert(!rot(s.rgb), `${id} is not red`);
+    farben[s.rgb.join(',')] = true;
+  }
+  assert(Object.keys(farben).length >= 8, 'mood colours are distinct');
+  const mood = { rgb: STIMMUNG.curious.rgb, licht: 'zuhoeren', heard: 1000, peak: 0 };
+  const laut = stimmungSchritt(mood, 1, 1000);
+  assert(laut && laut.rgb[2] > 200 && laut.override > RUHIG_STATES.zuhoeren.lo, 'a beep lifts the curious glow');
+  const leise = stimmungSchritt(mood, 0.2, 1100);
+  assert(leise && leise.override < laut.override, 'a softer syllable is dimmer');
+  const weg = stimmungSchritt(mood, 0, 1000 + 220 + 1300);
+  assert(weg && weg.override < laut.override, 'the glow eases down after the phrase');
+  assert(weg.rgb[2] < laut.rgb[2], 'the colour eases back toward idle');
+  assert(stimmungSchritt(mood, 0, 1000 + 220 + 2700) === null, 'standby returns after the fade');
 }
 
 if (fehler) {

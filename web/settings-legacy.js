@@ -1413,7 +1413,24 @@
   }
 
   // web/version.js
-  var VERSION = "2.2.2";
+  var VERSION = "2.2.3";
+
+  // web/zustaende.js
+  var RING = {
+    schlafen: [58, 21, 0],
+    idle: [255, 106, 0],
+    hallo: [255, 176, 102],
+    zuhoeren: [0, 200, 255],
+    nachdenken: [138, 60, 255],
+    verstanden: [43, 255, 136],
+    erledigt: [43, 255, 136],
+    nicht_verstanden: [255, 160, 0],
+    fehler: [255, 26, 26],
+    lachen: [255, 90, 138],
+    musik: [255, 122, 0],
+    licht_an: [255, 230, 168],
+    licht_aus: [58, 21, 0]
+  };
 
   // web/reaktionen.js
   var REAKTION_IDS = [
@@ -1434,6 +1451,22 @@
   ];
   var SATZ = {};
   for (let i = 0; i < REAKTION_IDS.length; i++) SATZ[REAKTION_IDS[i]] = true;
+  var STIMMUNG = {
+    surprised: { licht: "sprechen", rgb: RING.hallo.slice() },
+    curious: { licht: "zuhoeren", rgb: RING.zuhoeren.slice() },
+    shy: { licht: "sprechen", rgb: [176, 150, 206] },
+    pleased: { licht: "bestaetigt", rgb: RING.verstanden.slice() },
+    thinking: { licht: "nachdenken", rgb: RING.nachdenken.slice() },
+    confused: { licht: "sprechen", rgb: [255, 170, 64] },
+    nod: { licht: "bestaetigt", rgb: [90, 220, 175] },
+    sad: { licht: "sprechen", rgb: [126, 158, 204] },
+    happy: { licht: "sprechen", rgb: RING.lachen.slice() },
+    relieved: { licht: "bestaetigt", rgb: [170, 245, 200] },
+    sleepy: { licht: "sprechen", rgb: RING.schlafen.slice() },
+    startled: { licht: "sprechen", rgb: [255, 214, 140] },
+    grumpy: { licht: "fehler", rgb: RING.fehler.slice() },
+    content: { licht: "sprechen", rgb: [255, 186, 120] }
+  };
   function spur(dauer, werte) {
     const n = werte.length;
     const keys = new Array(n);

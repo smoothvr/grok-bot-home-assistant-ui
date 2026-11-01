@@ -149,6 +149,10 @@ export class Buehne {
       const n = Number(o.huelle);
       this.lichtHuelle = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
     }
+    if ('override' in o) {
+      const n = Number(o.override);
+      this.lichtOverride = Number.isFinite(n) ? n : null;
+    } else this.lichtOverride = null;
   }
 
   // Screen-edge light under the eyes. Bold only flashes it while a tap is acknowledged.
@@ -180,6 +184,7 @@ export class Buehne {
     if (this.lichtProfil === 'lebhaft') lebhaftSet(this.lichtMaschine, st, now, rgb);
     else ruhigSet(this.lichtMaschine, st, now, rgb);
     this.lichtMaschine.huelle = this.lichtHuelle > 0 ? this.lichtHuelle : 0;
+    this.lichtMaschine.override = typeof this.lichtOverride === 'number' ? this.lichtOverride : null;
     const frameFn = this.lichtProfil === 'lebhaft' ? lebhaftFrame : ruhigFrame;
     frameFn(this.lichtCtx, this.lichtFeld, this.lichtMaschine, now, this.lichtT);
     const ctx = this.ctx;

@@ -1,6 +1,6 @@
 {
   "name": "grok-bot-home-assistant-ui",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "A face for a wall-mounted tablet. Eyes, light, and sound for local Home Assistant. Voice is not part of this release.",
   "license": "MIT",
   "author": "smoothvr (https://github.com/smoothvr)",

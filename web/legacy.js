@@ -3718,6 +3718,33 @@
     if (!(d > 0)) d = 0;
     return lv + (ziel - lv) * (1 - Math.exp(-d / 0.12));
   }
+  var RUECK_MS = 2600;
+  function stimmungSchritt(mood, env2, now) {
+    if (!mood || !mood.rgb || !mood.rgb.length) return null;
+    var e = Number(env2);
+    if (!(e > 0)) e = 0;
+    if (e > 1) e = 1;
+    var licht = mood.licht && RUHIG_STATES[mood.licht] ? mood.licht : "idle";
+    if (e > 0.03) {
+      mood.heard = now;
+      mood.peak = pegelAusHuelle(licht, e, "ruhig");
+    }
+    var silent = now - mood.heard;
+    if (!(silent >= 0)) silent = 0;
+    if (silent < 220) {
+      return { licht, rgb: mood.rgb, override: pegelAusHuelle(licht, e, "ruhig") };
+    }
+    var u = (silent - 220) / RUECK_MS;
+    if (u >= 1) return null;
+    var left = 1 - easeInOutSine(Math.max(0, Math.min(1, u)));
+    var peak = mood.peak > 0 ? mood.peak : pegelAusHuelle(licht, 1, "ruhig");
+    var basis = levelRuhig("idle", now / 1e3);
+    return {
+      licht: left > 0.2 ? licht : "idle",
+      rgb: mixLin(STATES.idle.rgb, mood.rgb, left),
+      override: basis + (peak - basis) * left
+    };
+  }
   function zielLvVon(st, pv, t, ue, profil, huelle) {
     if (huelle > 0) {
       return pegelAusHuelle(st, huelle, profil) * ue + pegelAusHuelle(pv, huelle, profil) * (1 - ue);
@@ -3755,7 +3782,7 @@
     var target = RUHIG_STATES[st].modus === "lang" ? 1 : 0, step = dt / RUHIG.T_MODUS;
     S.wl = S.wl < target ? Math.min(target, S.wl + step) : Math.max(target, S.wl - step);
     var wlE = sst2(0, 1, S.wl);
-    var zielLv = zielLvVon(st, pv, t, ue, "ruhig", S.huelle);
+    var zielLv = typeof S.override === "number" ? S.override : zielLvVon(st, pv, t, ue, "ruhig", S.huelle);
     if (typeof S.lv !== "number") S.lv = zielLv;
     S.lv = glaettePegel(S.lv, zielLv, dt);
     var lv = S.lv, ra = rahmenRuhig(st, t) * ue + rahmenRuhig(pv, t) * (1 - ue);
@@ -3801,7 +3828,7 @@
     S.last = now;
     var ue = fixed ? 1 : easeOutCubic(Math.max(0, Math.min(1, (now - S.tState) / 450)));
     var st = S.state, pv = S.prev;
-    var zielLv = zielLvVon(st, pv, t, ue, "lebhaft", S.huelle);
+    var zielLv = typeof S.override === "number" ? S.override : zielLvVon(st, pv, t, ue, "lebhaft", S.huelle);
     if (typeof S.lv !== "number") S.lv = zielLv;
     S.lv = glaettePegel(S.lv, zielLv, dt);
     var ziel = zielFarbe(S, st);
@@ -3933,6 +3960,10 @@
         const n = Number(o.huelle);
         this.lichtHuelle = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
       }
+      if ("override" in o) {
+        const n = Number(o.override);
+        this.lichtOverride = Number.isFinite(n) ? n : null;
+      } else this.lichtOverride = null;
     }
     // Screen-edge light under the eyes. Bold only flashes it while a tap is acknowledged.
     // The name "alarm" is the red rim, and only while the state is angry. Every other name is the 1.4.3 Quiet or Lively field.
@@ -3963,6 +3994,7 @@
       if (this.lichtProfil === "lebhaft") lebhaftSet(this.lichtMaschine, st, now, rgb);
       else ruhigSet(this.lichtMaschine, st, now, rgb);
       this.lichtMaschine.huelle = this.lichtHuelle > 0 ? this.lichtHuelle : 0;
+      this.lichtMaschine.override = typeof this.lichtOverride === "number" ? this.lichtOverride : null;
       const frameFn = this.lichtProfil === "lebhaft" ? lebhaftFrame : ruhigFrame;
       frameFn(this.lichtCtx, this.lichtFeld, this.lichtMaschine, now, this.lichtT);
       const ctx = this.ctx;
@@ -4546,6 +4578,22 @@
   function istReaktion(id) {
     return !!SATZ[id];
   }
+  var STIMMUNG = {
+    surprised: { licht: "sprechen", rgb: RING.hallo.slice() },
+    curious: { licht: "zuhoeren", rgb: RING.zuhoeren.slice() },
+    shy: { licht: "sprechen", rgb: [176, 150, 206] },
+    pleased: { licht: "bestaetigt", rgb: RING.verstanden.slice() },
+    thinking: { licht: "nachdenken", rgb: RING.nachdenken.slice() },
+    confused: { licht: "sprechen", rgb: [255, 170, 64] },
+    nod: { licht: "bestaetigt", rgb: [90, 220, 175] },
+    sad: { licht: "sprechen", rgb: [126, 158, 204] },
+    happy: { licht: "sprechen", rgb: RING.lachen.slice() },
+    relieved: { licht: "bestaetigt", rgb: [170, 245, 200] },
+    sleepy: { licht: "sprechen", rgb: RING.schlafen.slice() },
+    startled: { licht: "sprechen", rgb: [255, 214, 140] },
+    grumpy: { licht: "fehler", rgb: RING.fehler.slice() },
+    content: { licht: "sprechen", rgb: [255, 186, 120] }
+  };
   function spur(dauer, werte) {
     const n = werte.length;
     const keys = new Array(n);
@@ -5096,6 +5144,7 @@
       let einmalPos = 0;
       let schleife = createSchleife();
       let schrittBis = 0;
+      let stimmung = null;
       const LANG_MS = 720;
       function el(id) {
         return document.getElementById(id);
@@ -5173,6 +5222,11 @@
         }).catch(() => {
         });
       }
+      function merkeStimmung(id) {
+        const s = STIMMUNG[id];
+        if (!s) return;
+        stimmung = { rgb: s.rgb, licht: s.licht, heard: performance.now(), peak: 0 };
+      }
       function spieleReaktion(id, opt) {
         const o = opt || {};
         const rend = reaktionen.start(id, augen.now, o);
@@ -5185,6 +5239,7 @@
           staerke: basis * (0.4 + 0.6 * Math.max(0, Math.min(1, live))),
           blick: o.blick !== false
         };
+        merkeStimmung(id);
         if (o.ton !== false) sag(rend.phrase, o.gain == null ? 0.85 : o.gain);
         if (modus === "loop") schrittBis = Math.max(schrittBis, performance.now() + (rend.dur + 0.6) * 1e3);
         return rend;
@@ -5563,6 +5618,7 @@
           staerke: 0.4 + 0.6 * Math.max(0, Math.min(1, live)),
           blick: true
         };
+        merkeStimmung(item.id);
         sag(rend.phrase, 0.85);
         schrittBis = performance.now() + (rend.dur + schrittPause(loop)) * 1e3;
         return rend;
@@ -5627,12 +5683,25 @@
         else if (hinweis.offen || now < wachBis) lichtKurz = "verstanden";
         const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== "normal" });
         const puls = pulsHuelle(now, scheinPulse);
+        let zustand = befehl.name;
+        let rgb = befehl.rgb;
+        let override = null;
+        if (!befehl.alarm && stimmung) {
+          const schritt = stimmungSchritt(stimmung, puls, now);
+          if (!schritt) stimmung = null;
+          else {
+            zustand = schritt.licht;
+            rgb = schritt.rgb;
+            override = schritt.override;
+          }
+        }
         renderer.setLicht({
           profil: konfig.lichtProfil === "lebhaft" ? "lebhaft" : "ruhig",
-          zustand: befehl.name,
-          rgb: befehl.rgb,
+          zustand,
+          rgb,
           alarmStark: konfig.alarmStaerke !== "normal",
-          huelle: puls
+          huelle: puls,
+          override
         });
         const ring = befehl.alarm ? [befehl.rgb, 1, null, "angry"] : augen.ring || [[255, 106, 0], 0.2, null];
         renderer.render(pose, ring);

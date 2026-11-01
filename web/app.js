@@ -14,7 +14,7 @@ import { Buehne } from './renderer.js';
 import { onZeiger } from './zeiger.js';
 import { istAltgeraet } from './power.js';
 import { mapHaState, mockHa, sichereMeldung, verbindeHa } from './ha.js';
-import { lichtBefehl } from './licht.js';
+import { lichtBefehl, stimmungSchritt } from './licht.js';
 import { demoSchritt } from './demo.js';
 import { createDemoMusic } from './demotrack.js';
 import { helligkeit, tuerOffen } from './dimmen.js';
@@ -23,7 +23,7 @@ import { anwesend, createWecker } from './wache.js';
 import { ackAnHa, createHinweis } from './hinweis.js';
 import { blickZumPunkt } from './blick.js';
 import {
-  ACK_POOL, FEHLER_POOL, HINWEIS_POOL, REAKTIONEN, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
+  ACK_POOL, FEHLER_POOL, HINWEIS_POOL, REAKTIONEN, STIMMUNG, createReaktionLauf, createStupser, istReaktion, mische, poseBei, staerke,
 } from './reaktionen.js';
 import { createStimme, pulsHuelle, bauePhrase } from './stimme.js';
 import {
@@ -98,6 +98,7 @@ let einmal = [];
 let einmalPos = 0;
 let schleife = createSchleife();
 let schrittBis = 0;
+let stimmung = null;
 const LANG_MS = 720;
 
 function el(id) { return document.getElementById(id); }
@@ -177,6 +178,12 @@ function sag(phraseId, gain) {
   }).catch(() => {});
 }
 
+function merkeStimmung(id) {
+  const s = STIMMUNG[id];
+  if (!s) return;
+  stimmung = { rgb: s.rgb, licht: s.licht, heard: performance.now(), peak: 0 };
+}
+
 function spieleReaktion(id, opt) {
   const o = opt || {};
   const rend = reaktionen.start(id, augen.now, o);
@@ -189,6 +196,7 @@ function spieleReaktion(id, opt) {
     staerke: basis * (0.4 + 0.6 * Math.max(0, Math.min(1, live))),
     blick: o.blick !== false,
   };
+  merkeStimmung(id);
   if (o.ton !== false) sag(rend.phrase, o.gain == null ? 0.85 : o.gain);
   if (modus === 'loop') schrittBis = Math.max(schrittBis, performance.now() + (rend.dur + 0.6) * 1000);
   return rend;
@@ -591,6 +599,7 @@ function spieleFest(item, loop) {
     staerke: 0.4 + 0.6 * Math.max(0, Math.min(1, live)),
     blick: true,
   };
+  merkeStimmung(item.id);
   sag(rend.phrase, 0.85);
   schrittBis = performance.now() + (rend.dur + schrittPause(loop)) * 1000;
   return rend;
@@ -659,12 +668,25 @@ function frame(now) {
   else if (hinweis.offen || now < wachBis) lichtKurz = 'verstanden';
   const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== 'normal' });
   const puls = pulsHuelle(now, scheinPulse);
+  let zustand = befehl.name;
+  let rgb = befehl.rgb;
+  let override = null;
+  if (!befehl.alarm && stimmung) {
+    const schritt = stimmungSchritt(stimmung, puls, now);
+    if (!schritt) stimmung = null;
+    else {
+      zustand = schritt.licht;
+      rgb = schritt.rgb;
+      override = schritt.override;
+    }
+  }
   renderer.setLicht({
     profil: konfig.lichtProfil === 'lebhaft' ? 'lebhaft' : 'ruhig',
-    zustand: befehl.name,
-    rgb: befehl.rgb,
+    zustand,
+    rgb,
     alarmStark: konfig.alarmStaerke !== 'normal',
     huelle: puls,
+    override,
   });
   const ring = befehl.alarm
     ? [befehl.rgb, 1, null, 'angry']
