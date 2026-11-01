@@ -9,6 +9,7 @@ import {
 } from './konfig.js';
 import { ladeSiteConfig } from './siteconfig.js';
 import { createAudio } from './audio.js';
+import { CACHE_UPDATE_MS, cacheAktualisieren, cacheUebernehmen, neuLaden, reloadImpuls } from './laden.js';
 import { createWaechter } from './schlaf.js';
 import { Buehne } from './renderer.js';
 import { onZeiger } from './zeiger.js';
@@ -53,7 +54,8 @@ if (demoBesuch(konfig, location, q)) konfig.demo = true;
 let locale = resolveLocale({ query: q.get('lang'), stored: konfig.lang, nav: navigator.language });
 const audio = createAudio(CLIPS, ['15_hmmm_a', '16_hmmm_b', '17_hmmm_c', '18_hmmm_d', HINWEIS_TON]);
 audio.setTon(konfig.ton);
-const stimme = createStimme();
+audio.setLaut(konfig.lautstaerke == null ? 1.6 : konfig.lautstaerke);
+const stimme = createStimme({ getDest: () => audio.ausgang() });
 const reaktionen = createReaktionLauf();
 const stupser = createStupser();
 const demoMusik = createDemoMusic();
@@ -100,6 +102,30 @@ let schleife = createSchleife();
 let schrittBis = 0;
 let stimmung = null;
 const LANG_MS = 720;
+const reloadGesehen = { bereit: false, wert: '' };
+
+function cacheObjekt() {
+  try { return window.applicationCache || null; } catch (err) { return null; }
+}
+
+function cachePruefen() {
+  cacheAktualisieren(cacheObjekt());
+}
+
+function seiteNeuLaden() {
+  neuLaden(cacheObjekt(), () => { location.reload(); });
+}
+
+function cacheLauschen() {
+  const cache = cacheObjekt();
+  if (!cache) return;
+  const fertig = () => {
+    if (!cacheUebernehmen(cache)) return;
+    location.reload();
+  };
+  cache.onupdateready = fertig;
+  if (typeof cache.addEventListener === 'function') cache.addEventListener('updateready', fertig, false);
+}
 
 function el(id) { return document.getElementById(id); }
 function t(key) { return translate(locale, key); }
@@ -142,8 +168,7 @@ function ersterKontakt() {
 }
 
 function pegel(gain) {
-  const laut = konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke;
-  return Math.max(0, Math.min(1, (gain == null ? 1 : gain) * laut));
+  return Math.max(0, Math.min(1, gain == null ? 1 : gain));
 }
 
 function spieleDatei(name, gain) {
@@ -166,7 +191,7 @@ function sag(phraseId, gain) {
   if (!phraseId || !konfig.ton) return;
   const phrase = stimme.plan(phraseId, performance.now());
   if (!phrase) return;
-  const laut = pegel(gain == null ? 1 : gain);
+  const laut = Math.max(0, Math.min(1, gain == null ? 1 : gain));
   if (!audioFrei) {
     merkePulse(stimme.spiel(null, phrase, 0, performance.now()));
     return;
@@ -283,8 +308,8 @@ function tonFuer(kurz, gainScale) {
 
 function syncDemoTrack() {
   const an = schauLaeuft && bildKurz === 'musik_an';
-  if (an && !demoMusik.playing && gehoert()) {
-    audio.unlock().then(() => demoMusik.start(audio.context())).catch(() => {});
+    if (an && !demoMusik.playing && gehoert()) {
+    audio.unlock().then(() => demoMusik.start(audio.context(), audio.ausgang())).catch(() => {});
   } else if (!an && demoMusik.playing) demoMusik.stop();
 }
 
@@ -345,6 +370,7 @@ function wendeZustand(roh, opt) {
 
 function starteWecken(variante) {
   if (!variante || tuerAuf) return;
+  cachePruefen();
   waechter.beruehrt();
   augen.set(KURZ.idle);
   bildKurz = 'idle';
@@ -437,6 +463,9 @@ function onStates(liste) {
       if (variante) starteWecken(variante);
     }
     if (konfig.reminderEntity && e.entity_id === konfig.reminderEntity) zeigeHinweis(e.state, 'ha');
+    if (konfig.reloadEntity && String(e.entity_id).toLowerCase() === konfig.reloadEntity) {
+      if (reloadImpuls(reloadGesehen, e.state)) seiteNeuLaden();
+    }
   }
 }
 
@@ -563,6 +592,7 @@ function starteHa() {
 function beiSicht() {
   if (document.visibilityState && document.visibilityState !== 'visible') return;
   if (ha && ha.nudge) ha.nudge();
+  cachePruefen();
 }
 
 function pruefeStoerung() {
@@ -607,6 +637,7 @@ function spieleFest(item, loop) {
 
 function starteEinmal() {
   modus = 'einmal';
+  cachePruefen();
   waechter.beruehrt();
   waechter.setPause(true);
   pauseAn = true;
@@ -698,6 +729,8 @@ function frame(now) {
 syncHearHint();
 syncUhr();
 setInterval(syncUhr, 1000);
+cacheLauschen();
+setInterval(cachePruefen, CACHE_UPDATE_MS);
 starteHa();
 
 const startState = param('state', 'zustand');

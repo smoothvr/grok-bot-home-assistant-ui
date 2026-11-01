@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2.2.3
+# version 2.2.4
 
 CACHE:
 index.html
@@ -45,6 +45,7 @@ blick.js
 wahl.js
 reaktionen.js
 stimme.js
+laden.js
 sw.js
 onsets.json
 config.example.json

@@ -22,8 +22,8 @@ const MUSTER = {
 };
 
 const VARIANTEN = 3;
-const MASTER = 0.2;
 const MAX_DUR = 1.45;
+const ZIEL_GAIN = 0.55;
 
 function zahl(rnd) {
   const n = Number(typeof rnd === 'function' ? rnd() : Math.random());
@@ -81,6 +81,12 @@ export function bauePhrase(id, rnd, letzte) {
     }
     ende = MAX_DUR;
   }
+  let spitze = 0;
+  for (let i = 0; i < notes.length; i++) if (notes[i].gain > spitze) spitze = notes[i].gain;
+  if (spitze > 0) {
+    const skala = ZIEL_GAIN / spitze;
+    for (let i = 0; i < notes.length; i++) notes[i].gain = Math.min(0.7, notes[i].gain * skala);
+  }
   return { id: key, index, notes, dur: ende };
 }
 
@@ -119,9 +125,13 @@ export function createStimme(opt) {
   let ziel = null;
 
   function ausgang(ctx) {
+    if (typeof o.getDest === 'function') {
+      const ext = o.getDest();
+      if (ext) return ext;
+    }
     if (ziel && ziel.ctx === ctx) return ziel.node;
     const node = ctx.createGain();
-    node.gain.value = MASTER;
+    node.gain.value = 1;
     node.connect(ctx.destination);
     ziel = { ctx, node };
     return node;
@@ -135,7 +145,7 @@ export function createStimme(opt) {
     osc.frequency.setValueAtTime(f0, t0);
     if (n.warble) osc.frequency.linearRampToValueAtTime(f0 * (1 + n.warble), t0 + n.dur * 0.42);
     osc.frequency.linearRampToValueAtTime(n.glide || f0, t0 + n.dur);
-    const peak = Math.max(0.0002, n.gain * MASTER * laut);
+    const peak = Math.max(0.0002, n.gain * laut);
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.028, n.dur * 0.35));
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + n.dur);

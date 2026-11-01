@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-export const VERSION = '2.2.3';
+export const VERSION = '2.2.4';
 
 // Profile, repository, and Sponsors in the credits. HVUZ links stay either way.
 export const REPO_PUBLIC = false;

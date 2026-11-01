@@ -86,9 +86,12 @@ assert(tuerKante(null, 'on') === false && tuerKante('off', 'on') === true && tue
   speichereKonfig({ ...k, haUrl: 'ws://saved.local/api/websocket', haToken: 'bleibt-gespeichert', lang: 'en', modus: 'led' }, leer);
   const danach = ladeKonfig('lang=de', leer, { haUrl: 'http://file.local:8123', haToken: 'datei-token', theme: 'cute', lang: 'en' });
   assert(danach.haUrl === 'ws://file.local:8123/api/websocket', 'file address overrides the save');
-  assert(danach.haToken === 'bleibt-gespeichert', 'a saved token wins over the file');
+  assert(danach.haToken === 'datei-token', 'a file token wins over the save');
   assert(danach.lang === 'de', 'URL wins over the save');
-  assert(danach.modus === 'led', 'saved theme wins over the file');
+  assert(danach.modus === '2d', 'a file theme wins over the save');
+  assert(danach.zentral.indexOf('haToken') >= 0 && danach.zentral.indexOf('haUrl') >= 0 && danach.zentral.indexOf('modus') >= 0, 'file keys are marked central');
+  const ohneDatei = ladeKonfig('', leer, null);
+  assert(ohneDatei.haToken === 'bleibt-gespeichert' && ohneDatei.modus === 'led', 'without the file the saved values remain');
   const demoSpeicher = mem();
   const demoK = ladeKonfig('', demoSpeicher, { haUrl: 'http://ha.local:8123', haToken: 'nicht-auf-demo' }, { hostname: DEMO_HOST });
   assert(demoK.haToken === '' && demoK.haUrl === '', 'the public demo ignores a file address and token');
@@ -132,6 +135,36 @@ assert(bereit('music', { dash: normDash(null), states: {}, scriptMusikAn: 'scrip
 assert(bereit('home', { dash: normDash(null), states: {} }) === false, 'home waits until an entity exists');
 assert(bereit('home', { dash: normDash(null), states: { 'weather.home': { state: 'unavailable' } } }) === true, 'an unavailable entity still keeps the view');
 assert(siteNachKonfig({ theme: 'fortune' }).modus === 'led', 'site helper maps the theme');
+assert(siteNachKonfig({ volume: 160 }).lautstaerke === 160, 'volume is kept for scaling');
+assert(siteNachKonfig({ reload_entity: 'input_button.eye_ui_reload' }).reloadEntity === 'input_button.eye_ui_reload', 'reload entity alias');
+{
+  const s = mem();
+  s.setItem('eye_ui_config', JSON.stringify({
+    v: 4,
+    profiles: {
+      tablet: { lautstaerke: 0.4, lebendigkeit: 0.2, lang: 'en', haToken: 'alt' },
+      phone: { haToken: 'telefon' },
+    },
+  }));
+  setzeKlasse('tablet');
+  const k = ladeKonfig('', s, {
+    volume: 160,
+    reloadEntity: 'input_button.eye_ui_reload',
+    presenceEntity: 'binary_sensor.living_room_presence',
+    reminderEntity: 'input_text.eye_hinweis',
+    reminderAckScript: 'script.eye_hinweis_quittieren',
+  });
+  assert(Math.abs(k.lautstaerke - 1.6) < 1e-9, 'file volume wins over the iPad');
+  assert(Math.abs(k.lebendigkeit - 0.2) < 1e-9, 'a field missing from the file stays saved');
+  assert(k.reloadEntity === 'input_button.eye_ui_reload', 'file reload entity');
+  assert(k.presenceEntity === 'binary_sensor.living_room_presence', 'presence from the file');
+  assert(k.reminderEntity === 'input_text.eye_hinweis' && k.reminderAckScript === 'script.eye_hinweis_quittieren', 'reminder keys from the file');
+  assert(k.zentral.indexOf('lautstaerke') >= 0 && k.zentral.indexOf('reloadEntity') >= 0, 'volume and reload are central');
+  assert(k.zentral.indexOf('lebendigkeit') < 0 && k.zentral.indexOf('lang') < 0, 'omitted keys are not central');
+  assert(k.haToken === 'alt', 'a token stays when the file has none');
+  const besuch = ladeKonfig('vol=0.5', s, { volume: 160 });
+  assert(Math.abs(besuch.lautstaerke - 0.5) < 1e-9, 'the URL still wins for one visit');
+}
 assert(normDash({ waste: 'calendar.waste, sensor.waste_*' }).waste.length === 1, 'a bad entity is dropped');
 assert(ECKEN_VORGABE.bl.tap.art === 'view', 'corner default');
 

@@ -10,6 +10,8 @@
   "dimLevel": 0.3,
   "schlafSekunden": 900,
   "ton": true,
+  "volume": 160,
+  "reloadEntity": "input_button.eye_ui_reload",
   "uhr": false,
   "demo": false
 }

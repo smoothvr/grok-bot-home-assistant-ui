@@ -1,6 +1,6 @@
 {
   "name": "grok-bot-home-assistant-ui",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "A face for a wall-mounted tablet. Eyes, light, and sound for local Home Assistant. Voice is not part of this release.",
   "license": "MIT",
   "author": "smoothvr (https://github.com/smoothvr)",
@@ -24,6 +24,6 @@
     "start": "python3 -m http.server 8000 -d web",
     "build": "node scripts/build-legacy.mjs",
     "appcache": "node scripts/appcache.mjs",
-    "test": "npm run build && node web/test_paritaet.mjs && node web/test_ha.mjs && node web/test_i18n.mjs && node web/test_legacy.mjs && node web/test_round.mjs && node web/test_face.mjs && node web/test_leben.mjs && node web/test_empfang.mjs"
+    "test": "npm run build && node web/test_paritaet.mjs && node web/test_ha.mjs && node web/test_i18n.mjs && node web/test_legacy.mjs && node web/test_round.mjs && node web/test_face.mjs && node web/test_leben.mjs && node web/test_empfang.mjs && node web/test_laden.mjs"
   }
 }

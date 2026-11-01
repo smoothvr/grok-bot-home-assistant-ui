@@ -1807,6 +1807,8 @@
       "err.url": "Use a ws://, wss://, http://, or https:// address for Home Assistant.",
       "err.entity": "Write the entity as domain.object, for example input_select.eye_ui_state.",
       "action.save": "Save",
+      "action.reload": "Reload",
+      "settings.central": "Set centrally",
       "action.close": "Close",
       "action.tour": "Play all states",
       "action.fullscreen": "Fullscreen",
@@ -2118,6 +2120,8 @@
       "err.url": "Die Adresse muss ws://, wss://, http:// oder https:// von Home Assistant sein.",
       "err.entity": "Die Entity als domain.objekt schreiben, zum Beispiel input_select.eye_ui_state.",
       "action.save": "Speichern",
+      "action.reload": "Neu laden",
+      "settings.central": "zentral gesetzt",
       "action.close": "Schlie\xDFen",
       "action.tour": "Alle Zust\xE4nde",
       "action.fullscreen": "Vollbild",
@@ -2315,7 +2319,8 @@
     kamera: "",
     ton: true,
     lebendigkeit: 0.42,
-    lautstaerke: 0.8,
+    lautstaerke: 1.6,
+    reloadEntity: "input_button.eye_ui_reload",
     label: false,
     caption: true,
     uhr: false,
@@ -2420,6 +2425,10 @@
     delete src.dashboard;
     if (src.licht_profil && !src.lichtProfil) src.lichtProfil = src.licht_profil;
     delete src.licht_profil;
+    if (src.volume != null && src.lautstaerke == null) src.lautstaerke = src.volume;
+    delete src.volume;
+    if (src.reload_entity && !src.reloadEntity) src.reloadEntity = src.reload_entity;
+    delete src.reload_entity;
     if (src.alarm && !src.alarmStaerke) src.alarmStaerke = src.alarm;
     delete src.alarm;
     if (src.haUrl) {
@@ -2451,6 +2460,12 @@
     if (n > 1) n /= 100;
     return Math.max(0, Math.min(1, n));
   }
+  function lautVon(v, fallback) {
+    let n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n > 2) n /= 100;
+    return Math.max(0, Math.min(2, n));
+  }
   function nurBekannte(obj) {
     const out = {};
     if (!obj || typeof obj !== "object") return out;
@@ -2479,13 +2494,17 @@
       const id = String(out.reminderAckScript || "").trim().toLowerCase();
       out.reminderAckScript = id && dienstAus(id) ? id : "";
     }
+    if ("reloadEntity" in out) {
+      const id = String(out.reloadEntity || "").trim().toLowerCase();
+      out.reloadEntity = id && gueltigeEntity(id) ? id : "";
+    }
     if ("kamera" in out) {
       const id = String(out.kamera || "").trim().toLowerCase();
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
     if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
-    if ("lautstaerke" in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
+    if ("lautstaerke" in out) out.lautstaerke = lautVon(out.lautstaerke, 1.6);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
     if ("uhr" in out) out.uhr = !!out.uhr;
@@ -2599,11 +2618,11 @@
     if (demoHost) delete ausDatei.haUrl;
     const stand = Number(gespeichert.gestenStand) || 0;
     const migriereGesten = stand < 2 && istAltesLayout(gespeichert.gesten, gespeichert.ecken);
-    const k = __spreadValues(__spreadValues(__spreadValues({}, VORGABE), ausDatei), nurBekannte(gespeichert));
-    if (!demoHost && ausDatei.haUrl) k.haUrl = ausDatei.haUrl;
+    const k = __spreadValues(__spreadValues(__spreadValues({}, VORGABE), nurBekannte(gespeichert)), ausDatei);
+    if (dateiToken) k.haToken = dateiToken;
     if (migriereGesten) {
-      k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
-      k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
+      if (!("gesten" in ausDatei)) k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
+      if (!("ecken" in ausDatei)) k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
       k.gestenStand = 2;
       migrated = true;
     }
@@ -2618,17 +2637,20 @@
     k.lockSalt = k.lockOn ? String(k.lockSalt) : "";
     k.lockHash = k.lockOn ? String(k.lockHash) : "";
     k.mediaEntity = gueltigeEntity(k.mediaEntity) ? String(k.mediaEntity).trim().toLowerCase() : "";
-    if (!String(k.haToken || "").trim()) {
+    const gespeichertToken = String(tokenVon(gespeichert) || "").trim();
+    if (dateiToken) {
+      k.haToken = dateiToken;
+      if (!gespeichertToken) migrated = true;
+    } else if (!String(k.haToken || "").trim()) {
       const geliehen = tokenVon(paket2.phone) || tokenVon(paket2.tablet) || tokenVon(paket2.flat) || tokenVon(paket2.top) || String(lesen(s, ALT_TOKEN) || "").trim();
       if (geliehen) {
         k.haToken = geliehen;
         migrated = true;
-      } else if (dateiToken) {
-        k.haToken = dateiToken;
-        migrated = true;
       }
     }
-    if (!demoHost && ausDatei.haUrl && ausDatei.haUrl !== String(gespeichert.haUrl || "")) migrated = true;
+    const zentral = Object.keys(ausDatei);
+    if (dateiToken) zentral.push("haToken");
+    k.zentral = zentral;
     if (migrated) speichereKonfig(k, s);
     const p = params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
     if (p.get("lock") === "reset") speichereKonfig(__spreadProps(__spreadValues({}, k), { lockOn: false, lockSalt: "", lockHash: "" }), s);
@@ -2664,7 +2686,7 @@
     const live = p.get("live") || p.get("liveliness") || p.get("lebendigkeit");
     if (live != null && live !== "" && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
     const vol = p.get("vol") || p.get("volume");
-    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = einheit(vol, n.lautstaerke);
+    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = lautVon(vol, n.lautstaerke);
     const modus = normModus(p.get("mode") || p.get("modus") || p.get("theme"));
     if (modus) n.modus = modus;
     const licht = String(p.get("licht_profil") || p.get("light") || "").trim().toLowerCase();
@@ -2772,6 +2794,29 @@
     const roh = {};
     let tonAn = true;
     let lauf = null;
+    let master = null;
+    let laut = 1.6;
+    function bus() {
+      if (master || !ac) return master;
+      master = ac.createGain();
+      master.gain.value = laut;
+      let ziel = ac.destination;
+      if (typeof ac.createDynamicsCompressor === "function") {
+        try {
+          const comp = ac.createDynamicsCompressor();
+          comp.threshold.value = -16;
+          comp.knee.value = 12;
+          comp.ratio.value = 4;
+          comp.attack.value = 3e-3;
+          comp.release.value = 0.18;
+          comp.connect(ac.destination);
+          ziel = comp;
+        } catch (err) {
+        }
+      }
+      master.connect(ziel);
+      return master;
+    }
     function prefetch() {
       const namen = new Set(extra.filter(Boolean));
       for (const c of clips) if (c.sound) namen.add(c.sound);
@@ -2805,6 +2850,7 @@
         }
         if (!lauf) lauf = dekodiere();
         yield lauf;
+        bus();
         return ac.state === "running";
       });
     }
@@ -2845,29 +2891,126 @@
       const s = ac.createBufferSource();
       s.buffer = buf[clip.sound];
       const gain = typeof clip.gain === "number" ? Math.max(0, Math.min(1, clip.gain)) : 1;
+      const ziel = bus() || ac.destination;
       if (gain < 0.99 && ac.createGain) {
         const g = ac.createGain();
         g.gain.value = gain;
         s.connect(g);
-        g.connect(ac.destination);
-      } else s.connect(ac.destination);
+        g.connect(ziel);
+      } else s.connect(ziel);
       s.start(ac.currentTime + (clip.s_off > 0 ? clip.s_off : 0));
     }
     function status() {
       return { freigegeben: !!ac && ac.state === "running", geladen: Object.keys(buf).length };
     }
     prefetch();
+    function setLaut(wert) {
+      const n = Number(wert);
+      laut = Number.isFinite(n) ? Math.max(0, Math.min(2, n)) : 1.6;
+      if (master) master.gain.value = laut;
+    }
     return {
       unlock,
       ton,
       context() {
         return ac;
       },
+      ausgang() {
+        return bus();
+      },
+      setLaut,
       setTon(an) {
         tonAn = !!an;
       },
       status
     };
+  }
+
+  // web/laden.js
+  var CACHE_UPDATE_MS = 30 * 60 * 1e3;
+  var UPDATEREADY = 4;
+  function reloadImpuls(gesehen, state) {
+    const g = gesehen && typeof gesehen === "object" ? gesehen : {};
+    const wert = state == null ? "" : String(state).trim();
+    if (!g.bereit) {
+      g.bereit = true;
+      g.wert = wert;
+      return false;
+    }
+    if (!wert || wert === "unknown" || wert === "unavailable") return false;
+    if (wert === g.wert) return false;
+    g.wert = wert;
+    return true;
+  }
+  function cacheAktualisieren(cache) {
+    if (!cache || typeof cache.update !== "function") return false;
+    try {
+      cache.update();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  function cacheUebernehmen(cache) {
+    if (!cache || Number(cache.status) !== UPDATEREADY || typeof cache.swapCache !== "function") return false;
+    try {
+      cache.swapCache();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  function neuLaden(cache, reloadFn, opt) {
+    const neu = typeof reloadFn === "function" ? reloadFn : function() {
+    };
+    const warte = opt && typeof opt.warteMs === "number" ? opt.warteMs : 4e3;
+    if (!cache) {
+      neu();
+      return;
+    }
+    let los = false;
+    let timer = 0;
+    function einmal(tausch) {
+      if (los) return;
+      los = true;
+      if (timer) clearTimeout(timer);
+      if (tausch) cacheUebernehmen(cache);
+      neu();
+    }
+    cache.onupdateready = function() {
+      einmal(true);
+    };
+    if (typeof cache.addEventListener === "function") {
+      cache.addEventListener("updateready", function() {
+        einmal(true);
+      }, false);
+      cache.addEventListener("noupdate", function() {
+        einmal(false);
+      }, false);
+      cache.addEventListener("error", function() {
+        einmal(false);
+      }, false);
+      cache.addEventListener("obsolete", function() {
+        einmal(false);
+      }, false);
+    }
+    cache.onnoupdate = function() {
+      einmal(false);
+    };
+    cache.onerror = function() {
+      einmal(false);
+    };
+    cache.onobsolete = function() {
+      einmal(false);
+    };
+    cacheAktualisieren(cache);
+    if (Number(cache.status) === UPDATEREADY) einmal(true);
+    if (!los && warte >= 0) {
+      timer = setTimeout(function() {
+        einmal(false);
+      }, warte);
+      if (timer && typeof timer.unref === "function") timer.unref();
+    }
   }
 
   // web/schlaf.js
@@ -4391,7 +4534,7 @@
         return buf;
       });
     }
-    function start(context) {
+    function start(context, dest) {
       return __async(this, null, function* () {
         if (!context) return false;
         yield ensure(context);
@@ -4401,7 +4544,7 @@
         const now = ac.currentTime;
         gain.gain.setValueAtTime(1e-4, now);
         gain.gain.exponentialRampToValueAtTime(0.8, now + 1.35);
-        gain.connect(ac.destination);
+        gain.connect(dest || ac.destination);
         src = ac.createBufferSource();
         src.buffer = buf;
         src.loop = true;
@@ -4876,8 +5019,8 @@
     relieved: { count: [2, 3], base: 430, step: 36, dur: 0.11, gap: 0.055, glide: 28, form: "up" }
   };
   var VARIANTEN = 3;
-  var MASTER = 0.2;
   var MAX_DUR = 1.45;
+  var ZIEL_GAIN = 0.55;
   function zahl(rnd) {
     const n = Number(typeof rnd === "function" ? rnd() : Math.random());
     return Number.isFinite(n) ? n : 0;
@@ -4928,6 +5071,12 @@
       }
       ende = MAX_DUR;
     }
+    let spitze = 0;
+    for (let i = 0; i < notes.length; i++) if (notes[i].gain > spitze) spitze = notes[i].gain;
+    if (spitze > 0) {
+      const skala = ZIEL_GAIN / spitze;
+      for (let i = 0; i < notes.length; i++) notes[i].gain = Math.min(0.7, notes[i].gain * skala);
+    }
     return { id: key, index, notes, dur: ende };
   }
   function pulsHuelle(now, pulse2) {
@@ -4952,9 +5101,13 @@
     let frei = 0;
     let ziel = null;
     function ausgang(ctx) {
+      if (typeof o.getDest === "function") {
+        const ext = o.getDest();
+        if (ext) return ext;
+      }
       if (ziel && ziel.ctx === ctx) return ziel.node;
       const node = ctx.createGain();
-      node.gain.value = MASTER;
+      node.gain.value = 1;
       node.connect(ctx.destination);
       ziel = { ctx, node };
       return node;
@@ -4967,7 +5120,7 @@
       osc.frequency.setValueAtTime(f0, t0);
       if (n.warble) osc.frequency.linearRampToValueAtTime(f0 * (1 + n.warble), t0 + n.dur * 0.42);
       osc.frequency.linearRampToValueAtTime(n.glide || f0, t0 + n.dur);
-      const peak = Math.max(2e-4, n.gain * MASTER * laut);
+      const peak = Math.max(2e-4, n.gain * laut);
       g.gain.setValueAtTime(1e-4, t0);
       g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.028, n.dur * 0.35));
       g.gain.exponentialRampToValueAtTime(1e-4, t0 + n.dur);
@@ -5100,7 +5253,8 @@
       let locale = resolveLocale({ query: q.get("lang"), stored: konfig.lang, nav: navigator.language });
       const audio = createAudio(CLIPS, ["15_hmmm_a", "16_hmmm_b", "17_hmmm_c", "18_hmmm_d", HINWEIS_TON]);
       audio.setTon(konfig.ton);
-      const stimme = createStimme();
+      audio.setLaut(konfig.lautstaerke == null ? 1.6 : konfig.lautstaerke);
+      const stimme = createStimme({ getDest: () => audio.ausgang() });
       const reaktionen = createReaktionLauf();
       const stupser = createStupser();
       const demoMusik = createDemoMusic();
@@ -5146,6 +5300,32 @@
       let schrittBis = 0;
       let stimmung = null;
       const LANG_MS = 720;
+      const reloadGesehen = { bereit: false, wert: "" };
+      function cacheObjekt() {
+        try {
+          return window.applicationCache || null;
+        } catch (err) {
+          return null;
+        }
+      }
+      function cachePruefen() {
+        cacheAktualisieren(cacheObjekt());
+      }
+      function seiteNeuLaden() {
+        neuLaden(cacheObjekt(), () => {
+          location.reload();
+        });
+      }
+      function cacheLauschen() {
+        const cache = cacheObjekt();
+        if (!cache) return;
+        const fertig = () => {
+          if (!cacheUebernehmen(cache)) return;
+          location.reload();
+        };
+        cache.onupdateready = fertig;
+        if (typeof cache.addEventListener === "function") cache.addEventListener("updateready", fertig, false);
+      }
       function el(id) {
         return document.getElementById(id);
       }
@@ -5188,8 +5368,7 @@
         }
       }
       function pegel(gain) {
-        const laut = konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke;
-        return Math.max(0, Math.min(1, (gain == null ? 1 : gain) * laut));
+        return Math.max(0, Math.min(1, gain == null ? 1 : gain));
       }
       function spieleDatei(name, gain) {
         if (!audioFrei || !konfig.ton || !name) return;
@@ -5210,7 +5389,7 @@
         if (!phraseId || !konfig.ton) return;
         const phrase = stimme.plan(phraseId, performance.now());
         if (!phrase) return;
-        const laut = pegel(gain == null ? 1 : gain);
+        const laut = Math.max(0, Math.min(1, gain == null ? 1 : gain));
         if (!audioFrei) {
           merkePulse(stimme.spiel(null, phrase, 0, performance.now()));
           return;
@@ -5323,7 +5502,7 @@
       function syncDemoTrack() {
         const an = schauLaeuft && bildKurz === "musik_an";
         if (an && !demoMusik.playing && gehoert()) {
-          audio.unlock().then(() => demoMusik.start(audio.context())).catch(() => {
+          audio.unlock().then(() => demoMusik.start(audio.context(), audio.ausgang())).catch(() => {
           });
         } else if (!an && demoMusik.playing) demoMusik.stop();
       }
@@ -5383,6 +5562,7 @@
       }
       function starteWecken(variante) {
         if (!variante || tuerAuf) return;
+        cachePruefen();
         waechter.beruehrt();
         augen.set(KURZ.idle);
         bildKurz = "idle";
@@ -5472,6 +5652,9 @@
             if (variante) starteWecken(variante);
           }
           if (konfig.reminderEntity && e.entity_id === konfig.reminderEntity) zeigeHinweis(e.state, "ha");
+          if (konfig.reloadEntity && String(e.entity_id).toLowerCase() === konfig.reloadEntity) {
+            if (reloadImpuls(reloadGesehen, e.state)) seiteNeuLaden();
+          }
         }
       }
       function eingang(aktion) {
@@ -5585,6 +5768,7 @@
       function beiSicht() {
         if (document.visibilityState && document.visibilityState !== "visible") return;
         if (ha && ha.nudge) ha.nudge();
+        cachePruefen();
       }
       function pruefeStoerung() {
         if (modus === "schlaf" || modus === "einmal" || modus === "loop") return;
@@ -5625,6 +5809,7 @@
       }
       function starteEinmal() {
         modus = "einmal";
+        cachePruefen();
         waechter.beruehrt();
         waechter.setPause(true);
         pauseAn = true;
@@ -5710,6 +5895,8 @@
       syncHearHint();
       syncUhr();
       setInterval(syncUhr, 1e3);
+      cacheLauschen();
+      setInterval(cachePruefen, CACHE_UPDATE_MS);
       starteHa();
       const startState = param("state", "zustand");
       const sequence = param("sequence", "sequenz");

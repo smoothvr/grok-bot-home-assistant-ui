@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.4] - 2026-11-01
+
+### Added
+
+- The page picks up a new version without closing Safari. A ready application cache is swapped and the page reloads. The cache is checked about every 30 minutes and when the iPad wakes. `input_button.eye_ui_reload` does the same over the existing socket. Settings has Neu laden.
+- Volume runs from 0 to 200 percent. `config.local.json` accepts `volume` and `reloadEntity`.
+
+### Changed
+
+- Sound is louder. One master gain feeds a compressor, and each droid phrase is leveled to a similar peak. The default is 160 percent. The glow still follows the phrase, not the volume knob.
+- A key in `config.local.json` wins over the value stored on the device. The device value is used only when the file omits that key. Settings shows those fields as centrally set. The public demo still ignores the address and the token. A URL parameter still wins for one visit.
+
 ## [2.2.3] - 2026-11-01
 
 ### Fixed

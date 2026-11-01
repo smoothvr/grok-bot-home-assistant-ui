@@ -20,7 +20,7 @@ npm start
 
 Open <http://localhost:8000/>. On a Home Assistant box the page is served at `/local/eye-ui/index.html`. A folder URL returns 403, so open `index.html` itself. Asset URLs are relative, so the same files work under `/local/eye-ui/`.
 
-Home Assistant caches `/local/` for 31 days. `index.html` points at `eye-ui.appcache`. `npm run appcache` writes a `# version` line from `VERSION`. Hosts should still send `Cache-Control: no-cache` for `sw.js` and `index.html`.
+Home Assistant caches `/local/` for 31 days. `index.html` points at `eye-ui.appcache`. `npm run appcache` writes a `# version` line from `VERSION`. When that cache is ready the page swaps it and reloads, including after a check about every 30 minutes and when the iPad wakes. Hosts should still send `Cache-Control: no-cache` for `sw.js` and `index.html`.
 
 A public demo is live at <https://grok-bot-ui.herrvonundzu.eu>. It starts in demo mode. On that host no token is ever stored.
 
@@ -49,7 +49,7 @@ Useful query parameters:
 | `?door=binary_sensor.front_door` | Hold angry while this contact is open, and relax when it closes. |
 | `?presence=binary_sensor.living_room_presence` | Wake from sleep when this sensor turns on. |
 | `?alarm=strong` or `?alarm=normal` | Alarm intensity. `?alarm_intensity=` accepts the same words. Strong is the default. |
-| `?live=0.7` or `?vol=0.8` | Liveliness and sound volume for this visit. A value above 1 is treated as a percent. |
+| `?live=0.7` or `?vol=1.6` | Liveliness and sound volume for this visit. Volume runs from 0 to 200 percent (`0.5` is half, `160` and `1.6` are 160 percent, `2` is 200 percent). |
 | `?ha=mock&sequence=listening,done` | Play states without a server. |
 
 Phone and tablet keep separate saved profiles in the same browser.
@@ -64,7 +64,7 @@ While idle the eyes saccade, glance to the sides and up, drift slowly, and tilt 
 
 The droid chatter is generated in the browser: short beeps and chirps, a little different every time, with a cooldown so a hallway does not get a stream of noise. The four wake hums are unchanged. The edge light follows those phrases inside the current colour's approved range.
 
-Settings has a Liveliness slider and a volume slider. Liveliness `0` keeps the gaze rare and skips casual tap reactions. The collapsed Reactions list at the bottom of settings plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the sliders for one visit (`70` or `0.7` both work).
+Settings has a Liveliness slider and a volume slider. Volume runs from 0 to 200 percent. The default is 160 percent, louder than the old 80 percent, and a compressor keeps peaks from clipping. Liveliness `0` keeps the gaze rare and skips casual tap reactions. The collapsed Reactions list at the bottom of settings plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the sliders for one visit. Neu laden checks the application cache and reloads the page.
 
 `speaking` on `input_select.eye_ui_state` lights the speaking colour while the eyes stay idle. `wake` on that same entity is the presence wake, not a separate clip.
 
@@ -83,6 +83,7 @@ Suggested helpers:
 - `script.eye_hinweis_quittieren` to clear that text
 - `binary_sensor.front_door` for the angry hold
 - `binary_sensor.living_room_presence` for the wake
+- `input_button.eye_ui_reload` to reload the page when its last-pressed time changes. The first value after connect is ignored. A missing helper does nothing. `reloadEntity` in `config.local.json` can name another button.
 
 `option: angry` still works from an automation. `input_boolean.eye_guard` can set that option while a guard is on. The page itself holds angry for as long as the door entity is open, and returns to idle when the door closes.
 
@@ -90,7 +91,7 @@ The socket sends `ping` every 30 seconds and reconnects if `pong` does not arriv
 
 ### Security
 
-On your own device the token stays only in that browser's localStorage. It is never put in a URL or sent anywhere except your Home Assistant. `config.local.json` can fill an empty token. That file is readable by anyone on the LAN, so use a non-admin, local-only Home Assistant user. On the public demo host no token is ever stored.
+On your own device the token stays only in that browser's localStorage. It is never put in a URL or sent anywhere except your Home Assistant. Every key present in `config.local.json` wins over the value stored on the iPad. A stored value is used only for a key the file does not contain. Settings shows those fields as centrally set, so a change there is not saved over the file. `volume` is a percent from 0 to 200. `reloadEntity` defaults to `input_button.eye_ui_reload`. `presenceEntity`, `reminderEntity`, and `reminderAckScript` still work. See `web/config.example.json`. A URL parameter still wins for one visit. The file is readable by anyone on the LAN, so use a non-admin, local-only Home Assistant user. On the public demo host the address and the token from that file are ignored, and no token is ever stored.
 
 ## License
 

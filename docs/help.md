@@ -12,13 +12,13 @@ Sleep is in minutes. `0` keeps the eyes awake. The page dims to 30 percent after
 
 The status line is a short caption for the current emotion, or “One moment.” when the connection needs a moment. Raw errors are not shown. Demo mode is optional. Alarm intensity is Strong. `?alarm=normal` or `?alarm=strong` changes it for one visit, and `?alarm_intensity=` accepts the same words.
 
-Liveliness (`Lebendigkeit`) and volume are sliders on the settings page. Liveliness changes how often the eyes glance and whether a casual tap gets a reaction. `?live=` and `?vol=` do the same for one visit.
+Liveliness (`Lebendigkeit`) and volume are sliders on the settings page. Volume runs from 0 to 200 percent, and the default is 160 percent. Liveliness changes how often the eyes glance and whether a casual tap gets a reaction. `?live=` and `?vol=` do the same for one visit. A field that `config.local.json` sets is marked centrally set and is not edited by hand. Neu laden checks for a new version and reloads the page.
 
 <h2 id="sound">Sound</h2>
 
 The first tap anywhere unlocks sound and keeps it unlocked for that visit. Until then the page is light only, and it shows one small line, “tap me to hear me”. Idle stays quiet. Other states have their own tone. A presence wake plays one of four short hums, with a small startled squeak just before. A reminder plays a soft chime and a short nod or question.
 
-Reactions also speak in generated beeps: a happy trill, a curious rise, a sad descending boop, a thinking burble, a startled squeak, a sleepy yawn, and yes or no. Pitch, tempo, and the number of notes change a little each play. Phrases are short and sit under a cooldown. The volume slider scales every tone. Mute still silences them. This uses `AudioContext`, or `webkitAudioContext` on iOS 10. No sound files were added for the chatter.
+Reactions also speak in generated beeps: a happy trill, a curious rise, a sad descending boop, a thinking burble, a startled squeak, a sleepy yawn, and yes or no. Pitch, tempo, and the number of notes change a little each play. Phrases are short and sit under a cooldown. The volume slider scales every tone from 0 to 200 percent. The droid phrases are leveled to a similar loudness, and a compressor keeps the louder settings from clipping. The edge still follows the phrase itself. Mute still silences them. This uses `AudioContext`, or `webkitAudioContext` on iOS 10. No sound files were added for the chatter.
 
 This page does not use the microphone. Voice is not part of this release.
 
@@ -26,7 +26,7 @@ When the demo reaches the music state and no player is set, the page can play a 
 
 <h2 id="home-assistant">Home Assistant</h2>
 
-The page talks only to the local WebSocket API. On your own device the token stays only in that browser's localStorage, under `eye_ui_config`, and is never put in a URL or sent anywhere except your Home Assistant. On the public demo host no token is ever stored. A token and address saved by 1.0.x are kept.
+The page talks only to the local WebSocket API. On your own device the token stays only in that browser's localStorage, under `eye_ui_config`, and is never put in a URL or sent anywhere except your Home Assistant. On the public demo host no token is ever stored. A token and address saved by 1.0.x are kept. A key in `config.local.json` wins over the value stored on the tablet. `volume` is a percent, and `reloadEntity` names the button that reloads the page. `presenceEntity`, `reminderEntity`, and `reminderAckScript` still work.
 
 Copy the files to `config/www/eye-ui/` and open `/local/eye-ui/index.html`. Folders return 403. Home Assistant caches `/local/` for 31 days. The page references `eye-ui.appcache`, and `npm run appcache` stamps `# version` from `VERSION`. Hosts should send `Cache-Control: no-cache` for `sw.js` and `index.html`.
 

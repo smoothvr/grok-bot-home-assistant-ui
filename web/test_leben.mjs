@@ -172,7 +172,20 @@ assert(scheinFarbe(false, [0, 200, 255]).indexOf('0, 200, 255') >= 0, 'other col
 {
   const live = mitUrl(VORGABE, new URLSearchParams('live=40&vol=0.5'));
   assert(Math.abs(live.lebendigkeit - 0.4) < 1e-9 && Math.abs(live.lautstaerke - 0.5) < 1e-9, 'live and volume from the URL');
-  assert(VORGABE.lebendigkeit === 0.42 && VORGABE.lautstaerke === 0.8, 'liveliness and volume defaults');
+  assert(Math.abs(mitUrl(VORGABE, new URLSearchParams('vol=160')).lautstaerke - 1.6) < 1e-9, '160 percent is a gain of 1.6');
+  assert(Math.abs(mitUrl(VORGABE, new URLSearchParams('vol=200')).lautstaerke - 2) < 1e-9, '200 percent is the top gain');
+  assert(Math.abs(mitUrl(VORGABE, new URLSearchParams('vol=80')).lautstaerke - 0.8) < 1e-9, 'a percent above 2 still scales');
+  assert(VORGABE.lebendigkeit === 0.42 && VORGABE.lautstaerke === 1.6, 'liveliness and volume defaults');
+  const spitzen = [];
+  for (const id of ['happy', 'sad', 'think', 'startle', 'sleepy']) {
+    let max = 0;
+    const phrase = bauePhrase(id, () => 0.4, null);
+    for (let i = 0; i < phrase.notes.length; i++) if (phrase.notes[i].gain > max) max = phrase.notes[i].gain;
+    spitzen.push(max);
+  }
+  const leise = Math.min.apply(null, spitzen);
+  const laut = Math.max.apply(null, spitzen);
+  assert(laut - leise < 0.02, 'droid phrases peak at a similar loudness');
 }
 
 assert(DEMO_REIHE[0] === 'hallo' && DEMO_REIHE[DEMO_REIHE.length - 1] === 'musik_an', 'demo still starts on hello and ends on music');
@@ -208,6 +221,7 @@ assert(legacy.includes('function createStimme'), 'legacy bundle keeps the voice'
 assert(legacy.includes('function createReaktionLauf'), 'legacy bundle keeps reaction selection');
 const settingsLegacy = fs.readFileSync(new URL('./settings-legacy.js', import.meta.url), 'utf8');
 assert(settingsLegacy.includes('lebendigkeit') && settingsLegacy.includes('lautstaerke'), 'settings bundle keeps the sliders');
+assert(settingsLegacy.includes('zentral gesetzt') && settingsLegacy.includes('neu-laden'), 'settings bundle keeps the central mark and the reload button');
 
 if (fehler) {
   console.error(`${fehler} checks failed`);

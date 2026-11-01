@@ -33,6 +33,8 @@
   }
   #form-fehler { min-height: 1.2em; color: #e7a394; }
   input[type="range"] { padding: 10px 0; }
+  .zentral { display: block; margin: 4px 0 0; color: #8a8176; font-size: 12px; letter-spacing: .04em; }
+  input[readonly], input:disabled, select:disabled { opacity: 0.72; }
   #preview-reactions { margin-top: 28px; color: #8a8176; }
   #preview-reactions summary { cursor: pointer; font-size: 13px; letter-spacing: .04em; }
   #preview-reactions p { margin-top: 8px; font-size: 13px; }
@@ -86,13 +88,14 @@
     </select>
     <label class="check"><input id="ton" type="checkbox"> <span data-i18n="display.sound">Sound</span></label>
     <label for="lautstaerke" data-i18n="display.volume">Volume</label>
-    <input id="lautstaerke" type="range" min="0" max="100" step="1" value="80">
+    <input id="lautstaerke" type="range" min="0" max="200" step="1" value="160">
     <label for="lebendigkeit" data-i18n="display.liveliness">Liveliness</label>
     <input id="lebendigkeit" type="range" min="0" max="100" step="1" value="42">
     <label class="check"><input id="uhr-an" type="checkbox"> <span data-i18n="display.clock">Clock</span></label>
     <p class="ruhig"><a id="link-demo" href="index.html?lauf=1" data-i18n="demo.link">Demo</a></p>
     <p id="form-fehler"></p>
     <button type="submit" data-i18n="action.save">Save</button>
+    <button type="button" id="neu-laden" data-i18n="action.reload">Reload</button>
     <a class="back" href="index.html" data-i18n="set.back">Back to the face</a>
   </form>
   <details id="preview-reactions">
@@ -101,7 +104,7 @@
     <div id="preview-list"></div>
   </details>
   <footer class="fuss">
-    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.2.3</a>
+    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.2.4</a>
     <a class="logo-only" href="https://www.herrvonundzu.eu/digitalisierung-automatisierung-4">
       <img src="assets/brand/hvuz-logo.jpg" width="22" height="22" alt="HVUZ">
     </a>

@@ -79,7 +79,8 @@ export const VORGABE = {
   kamera: '',
   ton: true,
   lebendigkeit: 0.42,
-  lautstaerke: 0.8,
+  lautstaerke: 1.6,
+  reloadEntity: 'input_button.eye_ui_reload',
   label: false,
   caption: true,
   uhr: false,
@@ -153,9 +154,10 @@ export function waehleModus(urlModus, gespeichert) {
   return 'vollbild';
 }
 
-// A site file may set the address, and it may fill a missing token. A saved token stays.
+// Every key in the site file wins over the value stored on this device.
+// A stored value is used only when the file omits that key.
 // The public demo host ignores the address and the token from the file.
-// Theme names map onto the stable keys. Other saved settings still win.
+// Theme names map onto the stable keys. URL parameters still win for one visit.
 export function siteNachKonfig(datei) {
   if (!datei || typeof datei !== 'object' || Array.isArray(datei)) return {};
   const src = { ...datei };
@@ -200,6 +202,10 @@ export function siteNachKonfig(datei) {
   delete src.dashboard;
   if (src.licht_profil && !src.lichtProfil) src.lichtProfil = src.licht_profil;
   delete src.licht_profil;
+  if (src.volume != null && src.lautstaerke == null) src.lautstaerke = src.volume;
+  delete src.volume;
+  if (src.reload_entity && !src.reloadEntity) src.reloadEntity = src.reload_entity;
+  delete src.reload_entity;
   if (src.alarm && !src.alarmStaerke) src.alarmStaerke = src.alarm;
   delete src.alarm;
   if (src.haUrl) {
@@ -227,6 +233,14 @@ function einheit(v, fallback) {
   if (!Number.isFinite(n)) return fallback;
   if (n > 1) n /= 100;
   return Math.max(0, Math.min(1, n));
+}
+
+// 0..2 is a gain (200 percent is 2). A larger number is a percent, so 160 and 1.6 match.
+function lautVon(v, fallback) {
+  let n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  if (n > 2) n /= 100;
+  return Math.max(0, Math.min(2, n));
 }
 
 function nurBekannte(obj) {
@@ -257,13 +271,17 @@ function nurBekannte(obj) {
     const id = String(out.reminderAckScript || '').trim().toLowerCase();
     out.reminderAckScript = id && dienstAus(id) ? id : '';
   }
+  if ('reloadEntity' in out) {
+    const id = String(out.reloadEntity || '').trim().toLowerCase();
+    out.reloadEntity = id && gueltigeEntity(id) ? id : '';
+  }
   if ('kamera' in out) {
     const id = String(out.kamera || '').trim().toLowerCase();
     out.kamera = id && gueltigeEntity(id) ? id : '';
   }
   if ('ton' in out) out.ton = !!out.ton;
   if ('lebendigkeit' in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
-  if ('lautstaerke' in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
+  if ('lautstaerke' in out) out.lautstaerke = lautVon(out.lautstaerke, 1.6);
   if ('label' in out) out.label = !!out.label;
   if ('caption' in out) out.caption = !!out.caption;
   if ('uhr' in out) out.uhr = !!out.uhr;
@@ -375,11 +393,11 @@ export function ladeKonfig(params, storage, datei, ort) {
   if (demoHost) delete ausDatei.haUrl;
   const stand = Number(gespeichert.gestenStand) || 0;
   const migriereGesten = stand < 2 && istAltesLayout(gespeichert.gesten, gespeichert.ecken);
-  const k = { ...VORGABE, ...ausDatei, ...nurBekannte(gespeichert) };
-  if (!demoHost && ausDatei.haUrl) k.haUrl = ausDatei.haUrl;
+  const k = { ...VORGABE, ...nurBekannte(gespeichert), ...ausDatei };
+  if (dateiToken) k.haToken = dateiToken;
   if (migriereGesten) {
-    k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
-    k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
+    if (!('gesten' in ausDatei)) k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
+    if (!('ecken' in ausDatei)) k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
     k.gestenStand = 2;
     migrated = true;
   }
@@ -394,17 +412,20 @@ export function ladeKonfig(params, storage, datei, ort) {
   k.lockSalt = k.lockOn ? String(k.lockSalt) : '';
   k.lockHash = k.lockOn ? String(k.lockHash) : '';
   k.mediaEntity = gueltigeEntity(k.mediaEntity) ? String(k.mediaEntity).trim().toLowerCase() : '';
-  if (!String(k.haToken || '').trim()) {
+  const gespeichertToken = String(tokenVon(gespeichert) || '').trim();
+  if (dateiToken) {
+    k.haToken = dateiToken;
+    if (!gespeichertToken) migrated = true;
+  } else if (!String(k.haToken || '').trim()) {
     const geliehen = tokenVon(paket.phone) || tokenVon(paket.tablet) || tokenVon(paket.flat) || tokenVon(paket.top) || String(lesen(s, ALT_TOKEN) || '').trim();
     if (geliehen) {
       k.haToken = geliehen;
       migrated = true;
-    } else if (dateiToken) {
-      k.haToken = dateiToken;
-      migrated = true;
     }
   }
-  if (!demoHost && ausDatei.haUrl && ausDatei.haUrl !== String(gespeichert.haUrl || '')) migrated = true;
+  const zentral = Object.keys(ausDatei);
+  if (dateiToken) zentral.push('haToken');
+  k.zentral = zentral;
   if (migrated) speichereKonfig(k, s);
   const p = params instanceof URLSearchParams ? params : new URLSearchParams(params || '');
   if (p.get('lock') === 'reset') speichereKonfig({ ...k, lockOn: false, lockSalt: '', lockHash: '' }, s);
@@ -443,7 +464,7 @@ export function mitUrl(konfig, params) {
   const live = p.get('live') || p.get('liveliness') || p.get('lebendigkeit');
   if (live != null && live !== '' && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
   const vol = p.get('vol') || p.get('volume');
-  if (vol != null && vol !== '' && !Number.isNaN(+vol)) n.lautstaerke = einheit(vol, n.lautstaerke);
+  if (vol != null && vol !== '' && !Number.isNaN(+vol)) n.lautstaerke = lautVon(vol, n.lautstaerke);
   const modus = normModus(p.get('mode') || p.get('modus') || p.get('theme'));
   if (modus) n.modus = modus;
   const licht = String(p.get('licht_profil') || p.get('light') || '').trim().toLowerCase();

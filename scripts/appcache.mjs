@@ -51,6 +51,7 @@ export const APPCACHE_DATEIEN = [
   'wahl.js',
   'reaktionen.js',
   'stimme.js',
+  'laden.js',
   'sw.js',
   'onsets.json',
   'config.example.json',

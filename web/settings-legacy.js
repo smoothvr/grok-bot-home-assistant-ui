@@ -21,6 +21,26 @@
     return a;
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __async = (__this, __arguments, generator) => {
+    return new Promise((resolve, reject) => {
+      var fulfilled = (value) => {
+        try {
+          step(generator.next(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var rejected = (value) => {
+        try {
+          step(generator.throw(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+      step((generator = generator.apply(__this, __arguments)).next());
+    });
+  };
 
   // web/polyfills.js
   if (typeof Object.fromEntries !== "function") {
@@ -528,6 +548,8 @@
       "err.url": "Use a ws://, wss://, http://, or https:// address for Home Assistant.",
       "err.entity": "Write the entity as domain.object, for example input_select.eye_ui_state.",
       "action.save": "Save",
+      "action.reload": "Reload",
+      "settings.central": "Set centrally",
       "action.close": "Close",
       "action.tour": "Play all states",
       "action.fullscreen": "Fullscreen",
@@ -839,6 +861,8 @@
       "err.url": "Die Adresse muss ws://, wss://, http:// oder https:// von Home Assistant sein.",
       "err.entity": "Die Entity als domain.objekt schreiben, zum Beispiel input_select.eye_ui_state.",
       "action.save": "Speichern",
+      "action.reload": "Neu laden",
+      "settings.central": "zentral gesetzt",
       "action.close": "Schlie\xDFen",
       "action.tour": "Alle Zust\xE4nde",
       "action.fullscreen": "Vollbild",
@@ -1020,7 +1044,8 @@
     kamera: "",
     ton: true,
     lebendigkeit: 0.42,
-    lautstaerke: 0.8,
+    lautstaerke: 1.6,
+    reloadEntity: "input_button.eye_ui_reload",
     label: false,
     caption: true,
     uhr: false,
@@ -1125,6 +1150,10 @@
     delete src.dashboard;
     if (src.licht_profil && !src.lichtProfil) src.lichtProfil = src.licht_profil;
     delete src.licht_profil;
+    if (src.volume != null && src.lautstaerke == null) src.lautstaerke = src.volume;
+    delete src.volume;
+    if (src.reload_entity && !src.reloadEntity) src.reloadEntity = src.reload_entity;
+    delete src.reload_entity;
     if (src.alarm && !src.alarmStaerke) src.alarmStaerke = src.alarm;
     delete src.alarm;
     if (src.haUrl) {
@@ -1156,6 +1185,12 @@
     if (n > 1) n /= 100;
     return Math.max(0, Math.min(1, n));
   }
+  function lautVon(v, fallback) {
+    let n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n > 2) n /= 100;
+    return Math.max(0, Math.min(2, n));
+  }
   function nurBekannte(obj) {
     const out = {};
     if (!obj || typeof obj !== "object") return out;
@@ -1184,13 +1219,17 @@
       const id = String(out.reminderAckScript || "").trim().toLowerCase();
       out.reminderAckScript = id && dienstAus(id) ? id : "";
     }
+    if ("reloadEntity" in out) {
+      const id = String(out.reloadEntity || "").trim().toLowerCase();
+      out.reloadEntity = id && gueltigeEntity(id) ? id : "";
+    }
     if ("kamera" in out) {
       const id = String(out.kamera || "").trim().toLowerCase();
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
     if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
-    if ("lautstaerke" in out) out.lautstaerke = einheit(out.lautstaerke, 0.8);
+    if ("lautstaerke" in out) out.lautstaerke = lautVon(out.lautstaerke, 1.6);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
     if ("uhr" in out) out.uhr = !!out.uhr;
@@ -1304,11 +1343,11 @@
     if (demoHost) delete ausDatei.haUrl;
     const stand = Number(gespeichert.gestenStand) || 0;
     const migriereGesten = stand < 2 && istAltesLayout(gespeichert.gesten, gespeichert.ecken);
-    const k = __spreadValues(__spreadValues(__spreadValues({}, VORGABE), ausDatei), nurBekannte(gespeichert));
-    if (!demoHost && ausDatei.haUrl) k.haUrl = ausDatei.haUrl;
+    const k = __spreadValues(__spreadValues(__spreadValues({}, VORGABE), nurBekannte(gespeichert)), ausDatei);
+    if (dateiToken) k.haToken = dateiToken;
     if (migriereGesten) {
-      k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
-      k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
+      if (!("gesten" in ausDatei)) k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
+      if (!("ecken" in ausDatei)) k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
       k.gestenStand = 2;
       migrated = true;
     }
@@ -1323,17 +1362,20 @@
     k.lockSalt = k.lockOn ? String(k.lockSalt) : "";
     k.lockHash = k.lockOn ? String(k.lockHash) : "";
     k.mediaEntity = gueltigeEntity(k.mediaEntity) ? String(k.mediaEntity).trim().toLowerCase() : "";
-    if (!String(k.haToken || "").trim()) {
+    const gespeichertToken = String(tokenVon(gespeichert) || "").trim();
+    if (dateiToken) {
+      k.haToken = dateiToken;
+      if (!gespeichertToken) migrated = true;
+    } else if (!String(k.haToken || "").trim()) {
       const geliehen = tokenVon(paket.phone) || tokenVon(paket.tablet) || tokenVon(paket.flat) || tokenVon(paket.top) || String(lesen(s, ALT_TOKEN) || "").trim();
       if (geliehen) {
         k.haToken = geliehen;
         migrated = true;
-      } else if (dateiToken) {
-        k.haToken = dateiToken;
-        migrated = true;
       }
     }
-    if (!demoHost && ausDatei.haUrl && ausDatei.haUrl !== String(gespeichert.haUrl || "")) migrated = true;
+    const zentral = Object.keys(ausDatei);
+    if (dateiToken) zentral.push("haToken");
+    k.zentral = zentral;
     if (migrated) speichereKonfig(k, s);
     const p = params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
     if (p.get("lock") === "reset") speichereKonfig(__spreadProps(__spreadValues({}, k), { lockOn: false, lockSalt: "", lockHash: "" }), s);
@@ -1369,7 +1411,7 @@
     const live = p.get("live") || p.get("liveliness") || p.get("lebendigkeit");
     if (live != null && live !== "" && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
     const vol = p.get("vol") || p.get("volume");
-    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = einheit(vol, n.lautstaerke);
+    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = lautVon(vol, n.lautstaerke);
     const modus = normModus(p.get("mode") || p.get("modus") || p.get("theme"));
     if (modus) n.modus = modus;
     const licht = String(p.get("licht_profil") || p.get("light") || "").trim().toLowerCase();
@@ -1412,8 +1454,140 @@
     return n;
   }
 
+  // web/siteconfig.js
+  function ladeSiteConfig(timeoutMs = 2500) {
+    return new Promise((resolve) => {
+      let fertig = false;
+      const ende = (wert) => {
+        if (fertig) return;
+        fertig = true;
+        resolve(wert && typeof wert === "object" ? wert : null);
+      };
+      const timer = setTimeout(() => ende(null), timeoutMs);
+      const ausText = (text, status) => {
+        clearTimeout(timer);
+        if (status !== 200 || !text) {
+          ende(null);
+          return;
+        }
+        try {
+          ende(JSON.parse(text));
+        } catch (e) {
+          ende(null);
+        }
+      };
+      const xhr = () => {
+        try {
+          const req = new XMLHttpRequest();
+          req.open("GET", "config.local.json", true);
+          req.onload = () => ausText(req.status === 200 ? req.responseText : "", req.status);
+          req.onerror = () => {
+            clearTimeout(timer);
+            ende(null);
+          };
+          req.send();
+        } catch (e) {
+          clearTimeout(timer);
+          ende(null);
+        }
+      };
+      if (typeof fetch === "function") {
+        try {
+          fetch("config.local.json", { cache: "no-store" }).then((res) => {
+            if (!res.ok) {
+              clearTimeout(timer);
+              ende(null);
+              return null;
+            }
+            return res.text();
+          }).then((text) => {
+            if (typeof text === "string") ausText(text, 200);
+          }).catch(() => xhr());
+        } catch (e) {
+          xhr();
+        }
+        return;
+      }
+      xhr();
+    });
+  }
+
+  // web/laden.js
+  var CACHE_UPDATE_MS = 30 * 60 * 1e3;
+  var UPDATEREADY = 4;
+  function cacheAktualisieren(cache) {
+    if (!cache || typeof cache.update !== "function") return false;
+    try {
+      cache.update();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  function cacheUebernehmen(cache) {
+    if (!cache || Number(cache.status) !== UPDATEREADY || typeof cache.swapCache !== "function") return false;
+    try {
+      cache.swapCache();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  function neuLaden(cache, reloadFn, opt) {
+    const neu = typeof reloadFn === "function" ? reloadFn : function() {
+    };
+    const warte = opt && typeof opt.warteMs === "number" ? opt.warteMs : 4e3;
+    if (!cache) {
+      neu();
+      return;
+    }
+    let los = false;
+    let timer = 0;
+    function einmal(tausch) {
+      if (los) return;
+      los = true;
+      if (timer) clearTimeout(timer);
+      if (tausch) cacheUebernehmen(cache);
+      neu();
+    }
+    cache.onupdateready = function() {
+      einmal(true);
+    };
+    if (typeof cache.addEventListener === "function") {
+      cache.addEventListener("updateready", function() {
+        einmal(true);
+      }, false);
+      cache.addEventListener("noupdate", function() {
+        einmal(false);
+      }, false);
+      cache.addEventListener("error", function() {
+        einmal(false);
+      }, false);
+      cache.addEventListener("obsolete", function() {
+        einmal(false);
+      }, false);
+    }
+    cache.onnoupdate = function() {
+      einmal(false);
+    };
+    cache.onerror = function() {
+      einmal(false);
+    };
+    cache.onobsolete = function() {
+      einmal(false);
+    };
+    cacheAktualisieren(cache);
+    if (Number(cache.status) === UPDATEREADY) einmal(true);
+    if (!los && warte >= 0) {
+      timer = setTimeout(function() {
+        einmal(false);
+      }, warte);
+      if (timer && typeof timer.unref === "function") timer.unref();
+    }
+  }
+
   // web/version.js
-  var VERSION = "2.2.3";
+  var VERSION = "2.2.4";
 
   // web/zustaende.js
   var RING = {
@@ -1650,13 +1824,27 @@
     height: window.innerHeight,
     touch: navigator.maxTouchPoints > 0 || window.matchMedia("(pointer: coarse)").matches
   }));
-  var konfig = ladeKonfig(q, void 0, null, location);
-  if (istDemoHost(location.hostname)) {
-    konfig.haToken = "";
-    vergissToken();
-  }
-  var locale = resolveLocale({ query: q.get("lang"), stored: konfig.lang, nav: navigator.language });
-  var gesperrt = demoSperre(location.hostname);
+  var konfig = null;
+  var locale = "en";
+  var gesperrt = false;
+  var ZENTRAL_FELDER = [
+    ["ha-url", "haUrl"],
+    ["ha-token", "haToken"],
+    ["ha-entity", "haEntity"],
+    ["tuer-entity", "tuer"],
+    ["presence-entity", "presenceEntity"],
+    ["reminder-entity", "reminderEntity"],
+    ["reminder-ack", "reminderAckScript"],
+    ["schlaf-min", "schlafSekunden"],
+    ["dim-nach", "dimNachSekunden"],
+    ["dim-stufe", "dimStufe"],
+    ["sprache", "lang"],
+    ["alarm-staerke", "alarmStaerke"],
+    ["ton", "ton"],
+    ["lautstaerke", "lautstaerke"],
+    ["lebendigkeit", "lebendigkeit"],
+    ["uhr-an", "uhr"]
+  ];
   function el(id) {
     return document.getElementById(id);
   }
@@ -1697,7 +1885,7 @@
     setWert("dim-stufe", String(Math.round(((_b = konfig.dimStufe) != null ? _b : 0.3) * 100)));
     const ton = el("ton");
     if (ton) ton.checked = !!konfig.ton;
-    setWert("lautstaerke", String(Math.round((konfig.lautstaerke == null ? 0.8 : konfig.lautstaerke) * 100)));
+    setWert("lautstaerke", String(Math.round((konfig.lautstaerke == null ? 1.6 : konfig.lautstaerke) * 100)));
     setWert("lebendigkeit", String(Math.round((konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit) * 100)));
     const uhr = el("uhr-an");
     if (uhr) uhr.checked = !!konfig.uhr;
@@ -1719,40 +1907,70 @@
       note.hidden = !gesperrt;
       note.textContent = gesperrt ? t("demo.locked") : "";
     }
+    markiereZentral();
+  }
+  function zentralIst(key) {
+    return !!(konfig && konfig.zentral && konfig.zentral.indexOf(key) >= 0);
+  }
+  function markiereZentral() {
+    for (let i = 0; i < ZENTRAL_FELDER.length; i++) {
+      const id = ZENTRAL_FELDER[i][0];
+      const key = ZENTRAL_FELDER[i][1];
+      const node = el(id);
+      if (!node || !zentralIst(key)) continue;
+      const typ = String(node.type || "").toLowerCase();
+      if (node.tagName === "SELECT" || typ === "checkbox" || typ === "range") node.disabled = true;
+      else node.readOnly = true;
+      const hinweis = document.createElement("span");
+      hinweis.className = "zentral";
+      hinweis.textContent = t("settings.central");
+      const box = node.parentNode && node.parentNode.classList && node.parentNode.classList.contains("check") ? node.parentNode : node.parentNode;
+      if (box) box.appendChild(hinweis);
+    }
+    if (zentralIst("haToken")) {
+      const forget = el("token-loeschen");
+      if (forget) forget.disabled = true;
+    }
   }
   function melden(key) {
     const node = el("form-fehler");
     if (node) node.textContent = t(key);
   }
   function uebernehmen(k) {
-    k.schlafSekunden = Math.max(0, Math.round(Number(lies("schlaf-min")) * 60) || 0);
-    k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(Number(lies("dim-nach"))) || 0));
-    k.dimStufe = Math.max(0.05, Math.min(1, (Math.round(Number(lies("dim-stufe"))) || 30) / 100));
-    k.ton = !!(el("ton") && el("ton").checked);
-    k.lautstaerke = Math.max(0, Math.min(1, (Math.round(Number(lies("lautstaerke"))) || 0) / 100));
-    k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies("lebendigkeit"))) || 0) / 100));
-    k.uhr = !!(el("uhr-an") && el("uhr-an").checked);
-    const gewaehlt = lies("sprache");
-    k.lang = gewaehlt === "auto" ? "" : gewaehlt;
-    k.alarmStaerke = lies("alarm-staerke") === "normal" ? "normal" : "stark";
+    if (!zentralIst("schlafSekunden")) k.schlafSekunden = Math.max(0, Math.round(Number(lies("schlaf-min")) * 60) || 0);
+    if (!zentralIst("dimNachSekunden")) k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(Number(lies("dim-nach"))) || 0));
+    if (!zentralIst("dimStufe")) k.dimStufe = Math.max(0.05, Math.min(1, (Math.round(Number(lies("dim-stufe"))) || 30) / 100));
+    if (!zentralIst("ton")) k.ton = !!(el("ton") && el("ton").checked);
+    if (!zentralIst("lautstaerke")) k.lautstaerke = Math.max(0, Math.min(2, (Math.round(Number(lies("lautstaerke"))) || 0) / 100));
+    if (!zentralIst("lebendigkeit")) k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies("lebendigkeit"))) || 0) / 100));
+    if (!zentralIst("uhr")) k.uhr = !!(el("uhr-an") && el("uhr-an").checked);
+    if (!zentralIst("lang")) {
+      const gewaehlt = lies("sprache");
+      k.lang = gewaehlt === "auto" ? "" : gewaehlt;
+    }
+    if (!zentralIst("alarmStaerke")) k.alarmStaerke = lies("alarm-staerke") === "normal" ? "normal" : "stark";
   }
   function speichern(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
     const k = __spreadValues({}, konfig);
     const loeschen = !!(el("token-loeschen") && el("token-loeschen").checked);
     if (!gesperrt) {
-      const urlRoh = lies("ha-url");
-      if (urlRoh) {
-        const url = normalisiereHaUrl(urlRoh);
-        if (!url) {
-          melden("err.url");
-          return;
-        }
-        k.haUrl = url;
-      } else k.haUrl = "";
-      const token = lies("ha-token");
-      if (loeschen) k.haToken = "";
-      else if (token) k.haToken = token;
+      if (!zentralIst("haUrl")) {
+        const urlRoh = lies("ha-url");
+        if (urlRoh) {
+          const url = normalisiereHaUrl(urlRoh);
+          if (!url) {
+            melden("err.url");
+            return;
+          }
+          k.haUrl = url;
+        } else k.haUrl = "";
+      }
+      if (!zentralIst("haToken")) {
+        const token = lies("ha-token");
+        if (loeschen) k.haToken = "";
+        else if (token) k.haToken = token;
+      }
       const felder = [
         ["ha-entity", "haEntity"],
         ["tuer-entity", "tuer"],
@@ -1760,6 +1978,7 @@
         ["reminder-entity", "reminderEntity"]
       ];
       for (let i = 0; i < felder.length; i++) {
+        if (zentralIst(felder[i][1])) continue;
         const wert = lies(felder[i][0]).toLowerCase();
         if (wert && !gueltigeEntity(wert)) {
           melden("err.entity");
@@ -1767,23 +1986,49 @@
         }
         k[felder[i][1]] = wert;
       }
-      const ack = lies("reminder-ack").toLowerCase();
-      if (ack && !dienstAus(ack)) {
-        melden("err.entity");
-        return;
+      if (!zentralIst("reminderAckScript")) {
+        const ack = lies("reminder-ack").toLowerCase();
+        if (ack && !dienstAus(ack)) {
+          melden("err.entity");
+          return;
+        }
+        k.reminderAckScript = ack;
       }
-      k.reminderAckScript = ack;
     }
     uebernehmen(k);
-    speichereKonfig(k, void 0, { tokenLoeschen: !gesperrt && loeschen });
+    speichereKonfig(k, void 0, { tokenLoeschen: !gesperrt && loeschen && !zentralIst("haToken") });
     if (gesperrt) vergissToken();
     location.href = "index.html";
   }
-  applyI18n();
-  fuellen();
-  baueVorschau();
-  var form = el("form");
-  if (form) form.addEventListener("submit", speichern);
+  function cacheObjekt() {
+    try {
+      return window.applicationCache || null;
+    } catch (err) {
+      return null;
+    }
+  }
+  function starten() {
+    return __async(this, null, function* () {
+      const datei = yield ladeSiteConfig();
+      konfig = ladeKonfig(q, void 0, datei, location);
+      if (istDemoHost(location.hostname)) {
+        konfig.haToken = "";
+        vergissToken();
+      }
+      locale = resolveLocale({ query: q.get("lang"), stored: konfig.lang, nav: navigator.language });
+      gesperrt = demoSperre(location.hostname);
+      applyI18n();
+      fuellen();
+      baueVorschau();
+      const form = el("form");
+      if (form) form.addEventListener("submit", speichern);
+      const neu = el("neu-laden");
+      if (neu) neu.addEventListener("click", () => neuLaden(cacheObjekt(), () => {
+        location.reload();
+      }));
+    });
+  }
+  starten();
   function baueVorschau() {
     const box = el("preview-list");
     const details = el("preview-reactions");
