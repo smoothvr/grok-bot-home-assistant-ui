@@ -12,7 +12,7 @@ Sleep is in minutes. `0` keeps the eyes awake. The page dims to 30 percent after
 
 The status line is a short caption for the current emotion, or “One moment.” when the connection needs a moment. Raw errors are not shown. Demo mode is optional. Alarm intensity is Strong. `?alarm=normal` or `?alarm=strong` changes it for one visit, and `?alarm_intensity=` accepts the same words.
 
-Liveliness (`Lebendigkeit`) and volume are sliders on the settings page. Volume runs from 0 to 200 percent, and the default is 160 percent. Liveliness changes how often the eyes glance and whether a casual tap gets a reaction. `?live=` and `?vol=` do the same for one visit. A field that `config.local.json` sets is marked centrally set and is not edited by hand. Neu laden checks for a new version and reloads the page.
+Liveliness (`Lebendigkeit`) and volume are on the settings page. Volume runs from 0 to 200 percent in steps of 20, and the default is 160 percent. Liveliness is a few named steps and changes how often the eyes glance and whether a casual tap gets a reaction. The clock is off unless you turn it on. `?live=` and `?vol=` do the same for one visit. A field that `config.local.json` sets does not appear on the page. A new version still arrives through the application cache and through the reload button in Home Assistant.
 
 <h2 id="sound">Sound</h2>
 

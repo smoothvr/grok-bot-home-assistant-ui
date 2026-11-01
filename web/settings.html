@@ -9,103 +9,181 @@
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <title>Settings</title>
 <style>
-  html, body { margin: 0; background: #0c0c0c; color: #f4efe8; }
+  html, body { margin: 0; background: #000; color: #f4efe8; }
   body {
-    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
-    padding: 24px 16px 48px;
+    font: 18px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+    padding: 28px 22px 72px;
   }
-  main { max-width: 28rem; margin: 0 auto; }
-  h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
-  p { margin: 0 0 16px; color: #b7aea3; }
-  label { display: block; margin: 14px 0 6px; font-size: 13px; letter-spacing: .04em; }
-  input, select {
-    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px;
-    border: 1px solid #2a2a2a; background: #161616; color: #f4efe8; font: inherit;
+  main { max-width: 32rem; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 500; margin: 0 0 28px; letter-spacing: 0; }
+  h2 { font-size: 20px; font-weight: 500; margin: 0 0 12px; }
+  button {
+    -webkit-appearance: none;
+    appearance: none;
+    font: inherit;
   }
-  .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-  .check input { width: auto; }
-  p.ruhig { margin: 16px 0 0; }
-  p.ruhig a { color: #b7aea3; text-decoration: none; }
-  button, .back {
-    display: inline-block; margin-top: 18px; margin-right: 8px; padding: 10px 16px;
-    border-radius: 999px; border: 0; background: #f4efe8; color: #111; font: inherit;
-    text-decoration: none;
+  [hidden] { display: none; }
+  .feld { margin: 0 0 28px; }
+  .kopf { overflow: hidden; margin: 0 0 8px; }
+  .kopf span, .zeile .name { font-size: 20px; }
+  .wert { float: right; color: #ffd7a8; }
+  .zeile { overflow: hidden; min-height: 64px; }
+  .zeile .name { float: left; line-height: 44px; }
+  .wahl-knopf, .preview-btn, .text-knopf, .demo-zeile, .verbind-knopf {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 0;
+    background: #1a1612;
+    color: #d9d0c6;
   }
-  #form-fehler { min-height: 1.2em; color: #e7a394; }
-  input[type="range"] { padding: 10px 0; }
-  .zentral { display: block; margin: 4px 0 0; color: #8a8176; font-size: 12px; letter-spacing: .04em; }
-  input[readonly], input:disabled, select:disabled { opacity: 0.72; }
-  #preview-reactions { margin-top: 28px; color: #8a8176; }
-  #preview-reactions summary { cursor: pointer; font-size: 13px; letter-spacing: .04em; }
-  #preview-reactions p { margin-top: 8px; font-size: 13px; }
+  .wahl-knopf {
+    display: inline-block;
+    min-height: 60px;
+    min-width: 64px;
+    margin: 0 8px 8px 0;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 18px;
+  }
+  .wahl-knopf.an { background: #3a2614; color: #ffd7a8; }
+  .schieber-leiste { position: relative; height: 64px; }
+  .schieber-spur {
+    position: absolute; left: 0; right: 0; top: 28px; height: 8px;
+    border-radius: 4px; background: #2a241c;
+  }
+  .schieber-fuellung {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    border-radius: 4px; background: #e8893a;
+  }
+  .schieber-knopf {
+    position: absolute; top: 14px; width: 36px; height: 36px; margin-left: -18px;
+    border-radius: 18px; background: #f4efe8;
+  }
+  .schalter {
+    float: right;
+    width: 76px; height: 44px; margin-top: 10px; padding: 0;
+    border: 0; border-radius: 22px; background: #2a241c; position: relative;
+  }
+  .schalter.an { background: #c46a1a; }
+  .schalter-knopf {
+    position: absolute; top: 4px; left: 4px; width: 36px; height: 36px;
+    border-radius: 18px; background: #f4efe8;
+  }
+  .schalter.an .schalter-knopf { left: 36px; }
+  .demo-zeile, .verbind-knopf, .text-knopf {
+    display: block; width: 100%; min-height: 52px; margin: 0;
+    padding: 12px 0; text-align: left; font-size: 20px; background: transparent; color: #f4efe8;
+  }
+  .verbind-knopf, .text-knopf { color: #8a8176; font-size: 16px; min-height: 44px; }
+  .kasten { margin: 0 0 20px; }
+  .kasten label { display: block; margin: 0 0 8px; font-size: 15px; color: #b7aea3; }
+  .kasten input {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block; width: 100%; box-sizing: border-box;
+    margin: 0 0 16px; padding: 14px 12px;
+    border: 1px solid #2a241c; border-radius: 12px;
+    background: #141210; color: #f4efe8; font: 17px/1.3 -apple-system, Helvetica, Arial, sans-serif;
+  }
+  .aktionen { margin-top: 8px; }
+  .speichern, .schliessen {
+    display: block; width: 100%; min-height: 56px; margin: 0 0 12px;
+    border: 0; border-radius: 16px; font-size: 18px;
+  }
+  .speichern { background: #e8893a; color: #1a1008; }
+  .schliessen { background: transparent; color: #b7aea3; }
+  #form-fehler { min-height: 1.2em; margin: 0 0 8px; color: #e7a394; font-size: 15px; }
+  #preview-reactions { margin-top: 8px; color: #8a8176; }
+  #preview-reactions summary {
+    font-size: 18px; padding: 16px 0; min-height: 44px;
+  }
+  #preview-reactions summary::-webkit-details-marker { display: none; }
+  #preview-reactions p { margin: 0 0 8px; font-size: 15px; }
   .preview-btn {
-    margin: 8px 8px 0 0; padding: 6px 10px; border-radius: 999px;
-    border: 1px solid #2a2a2a; background: #161616; color: #d9d0c6;
-    font: inherit; font-size: 13px;
+    display: inline-block; min-height: 44px; margin: 0 8px 8px 0; padding: 10px 14px;
+    border-radius: 999px; font-size: 15px;
   }
-  footer { margin-top: 28px; display: flex; align-items: center; gap: 12px; }
-  footer a { color: #b7aea3; }
-  #credits { margin-top: 12px; font-size: 14px; }
+  footer { margin-top: 28px; }
+  footer a { color: #8a8176; text-decoration: none; margin-right: 12px; }
+  footer img { vertical-align: middle; }
+  #credits { margin-top: 12px; font-size: 14px; color: #8a8176; }
+  #credits a { color: #b7aea3; }
 </style>
 </head>
 <body>
 <main>
-  <h1 data-i18n="settings.title">Settings</h1>
-  <p data-i18n="settings.intro" data-help="phone">Hold the top-left corner to open settings. The token stays in this browser.</p>
-  <p id="demo-sperre" hidden></p>
+  <h1 data-i18n="settings.title" data-help="phone">Settings</h1>
   <form id="form">
-    <label for="ha-url" data-i18n="ha.url">Address</label>
-    <input id="ha-url" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ws://homeassistant.local:8123/api/websocket">
-    <label for="ha-token" data-i18n="ha.token">Long-lived token</label>
-    <input id="ha-token" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <label class="check"><input id="token-loeschen" type="checkbox"> <span data-i18n="ha.forget">Delete the saved token</span></label>
-    <label for="ha-entity" data-i18n="ha.entity">State entity</label>
-    <input id="ha-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="input_select.eye_ui_state">
-    <label for="tuer-entity" data-i18n="ha.door">Front door</label>
-    <input id="tuer-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="binary_sensor.front_door">
-    <label for="presence-entity" data-i18n="ha.presence">Presence</label>
-    <input id="presence-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="binary_sensor.living_room_presence">
-    <label for="reminder-entity" data-i18n="ha.reminder">Reminder</label>
-    <input id="reminder-entity" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="input_text.eye_hinweis">
-    <label for="reminder-ack" data-i18n="ha.reminderAck">Acknowledge reminder</label>
-    <input id="reminder-ack" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="script.eye_hinweis_quittieren">
-    <label for="schlaf-min" data-i18n="display.sleep">Sleep after minutes (0 = never)</label>
-    <input id="schlaf-min" type="number" min="0" step="1" value="15">
-    <label for="dim-nach" data-i18n="dim.after">Dim after seconds</label>
-    <input id="dim-nach" type="number" min="0" step="1" value="60">
-    <label for="dim-stufe" data-i18n="dim.level">Dim level, percent</label>
-    <input id="dim-stufe" type="number" min="5" max="100" step="1" value="30">
-    <label for="sprache" data-i18n="display.language">Language</label>
-    <select id="sprache">
-      <option value="auto">Auto</option>
-      <option value="en">English</option>
-      <option value="de">Deutsch</option>
-    </select>
-    <label for="alarm-staerke" data-i18n="alarm.label">Alarm</label>
-    <select id="alarm-staerke">
-      <option value="stark">Strong</option>
-      <option value="normal">Normal</option>
-    </select>
-    <label class="check"><input id="ton" type="checkbox"> <span data-i18n="display.sound">Sound</span></label>
-    <label for="lautstaerke" data-i18n="display.volume">Volume</label>
-    <input id="lautstaerke" type="range" min="0" max="200" step="1" value="160">
-    <label for="lebendigkeit" data-i18n="display.liveliness">Liveliness</label>
-    <input id="lebendigkeit" type="range" min="0" max="100" step="1" value="42">
-    <label class="check"><input id="uhr-an" type="checkbox"> <span data-i18n="display.clock">Clock</span></label>
-    <p class="ruhig"><a id="link-demo" href="index.html?lauf=1" data-i18n="demo.link">Demo</a></p>
+    <section class="feld" id="feld-schlaf">
+      <div class="kopf"><span data-i18n="settings.sleep">Sleep</span></div>
+      <div class="wahl" id="schlaf-min"></div>
+    </section>
+    <section class="feld" id="feld-dim">
+      <h2 data-i18n="settings.dim">Dim</h2>
+      <div id="feld-dim-nach">
+        <div class="kopf"><span data-i18n="settings.dimAfter">After</span></div>
+        <div class="wahl" id="dim-nach"></div>
+      </div>
+      <div id="feld-dim-stufe">
+        <div class="kopf"><span data-i18n="settings.dimLevel">Level</span></div>
+        <div class="wahl" id="dim-stufe"></div>
+      </div>
+    </section>
+    <section class="feld" id="feld-sprache">
+      <div class="kopf"><span data-i18n="display.language">Language</span></div>
+      <div class="wahl" id="sprache"></div>
+    </section>
+    <section class="feld" id="feld-laut">
+      <div class="kopf">
+        <span class="wert" id="laut-wert">160 %</span>
+        <span data-i18n="display.volume">Volume</span>
+      </div>
+      <div class="schieber" id="lautstaerke">
+        <div class="schieber-leiste">
+          <div class="schieber-spur"><div class="schieber-fuellung"></div></div>
+          <div class="schieber-knopf"></div>
+        </div>
+      </div>
+    </section>
+    <section class="feld" id="feld-leben">
+      <div class="kopf"><span data-i18n="display.liveliness">Liveliness</span></div>
+      <div class="wahl" id="lebendigkeit"></div>
+    </section>
+    <section class="feld zeile" id="feld-uhr">
+      <span class="name" data-i18n="display.clock">Clock</span>
+      <button type="button" class="schalter" id="uhr-an" aria-pressed="false"><span class="schalter-knopf"></span></button>
+    </section>
+    <section class="feld" id="feld-demo">
+      <button type="button" class="demo-zeile" id="demo-start" data-i18n="demo.link">Demo</button>
+    </section>
     <p id="form-fehler"></p>
-    <button type="submit" data-i18n="action.save">Save</button>
-    <button type="button" id="neu-laden" data-i18n="action.reload">Reload</button>
-    <a class="back" href="index.html" data-i18n="set.back">Back to the face</a>
+    <div class="aktionen">
+      <button type="submit" class="speichern" data-i18n="action.save">Save</button>
+      <button type="button" class="schliessen" id="schliessen" data-i18n="action.close">Close</button>
+    </div>
   </form>
+  <p id="feld-verbindung" hidden>
+    <button type="button" class="verbind-knopf" id="verbindung" data-i18n="settings.link">Connection</button>
+  </p>
+  <div class="kasten" id="verbindung-kasten" hidden>
+    <div id="feld-url">
+      <label for="ha-url" data-i18n="ha.url">Address</label>
+      <input id="ha-url" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ws://homeassistant.local:8123/api/websocket">
+    </div>
+    <div id="feld-token">
+      <label for="ha-token" data-i18n="ha.token">Long-lived token</label>
+      <input id="ha-token" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button type="button" class="text-knopf" id="token-loeschen" data-i18n="ha.forget">Delete the saved token</button>
+    </div>
+  </div>
   <details id="preview-reactions">
     <summary data-i18n="preview.summary">Reactions</summary>
     <p data-i18n="preview.help">A quiet list for trying each reaction. The first tap on the face unlocks the sound.</p>
     <div id="preview-list"></div>
-    <p class="ruhig"><button type="button" id="klingel-test" class="preview-btn" data-i18n="doorbell.test">Test the doorbell</button></p>
+    <p><button type="button" id="klingel-test" class="preview-btn" data-i18n="doorbell.test">Test the doorbell</button></p>
   </details>
   <footer class="fuss">
-    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.2.5</a>
+    <a id="version" href="https://www.herrvonundzu.eu/grok-bot-universal-home-assistant-ui/#changelog">v2.2.6</a>
     <a class="logo-only" href="https://www.herrvonundzu.eu/digitalisierung-automatisierung-4">
       <img src="assets/brand/hvuz-logo.jpg" width="22" height="22" alt="HVUZ">
     </a>

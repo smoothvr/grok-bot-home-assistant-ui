@@ -64,7 +64,7 @@ While idle the eyes saccade, glance to the sides and up, drift slowly, and tilt 
 
 The droid chatter is generated in the browser: short beeps and chirps, a little different every time, with a cooldown so a hallway does not get a stream of noise. The four wake hums are unchanged. The edge light follows those phrases inside the current colour's approved range.
 
-Settings has a Liveliness slider and a volume slider. Volume runs from 0 to 200 percent. The default is 160 percent, louder than the old 80 percent, and a compressor keeps peaks from clipping. Liveliness `0` keeps the gaze rare and skips casual tap reactions. The collapsed Reactions list at the bottom of settings plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the sliders for one visit. Neu laden checks the application cache and reloads the page.
+Settings shows sleep, dimming, language, volume, liveliness, the clock, and the demo. The clock is off unless you turn it on. Volume runs from 0 to 200 percent in steps of 20, and the default is 160 percent. Liveliness is a few named steps. `0` keeps the gaze rare and skips casual tap reactions. A field that `config.local.json` already sets is left off the page. The collapsed Reactions list plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the values for one visit. A new version still arrives through the application cache and through `input_button.eye_ui_reload`.
 
 `speaking` on `input_select.eye_ui_state` lights the speaking colour while the eyes stay idle. `wake` on that same entity is the presence wake, not a separate clip.
 

@@ -220,8 +220,8 @@ assert(legacy.includes('function bauePhrase'), 'legacy bundle keeps the phrase b
 assert(legacy.includes('function createStimme'), 'legacy bundle keeps the voice');
 assert(legacy.includes('function createReaktionLauf'), 'legacy bundle keeps reaction selection');
 const settingsLegacy = fs.readFileSync(new URL('./settings-legacy.js', import.meta.url), 'utf8');
-assert(settingsLegacy.includes('lebendigkeit') && settingsLegacy.includes('lautstaerke'), 'settings bundle keeps the sliders');
-assert(settingsLegacy.includes('zentral gesetzt') && settingsLegacy.includes('neu-laden'), 'settings bundle keeps the central mark and the reload button');
+assert(settingsLegacy.includes('lebendigkeit') && settingsLegacy.includes('lautstaerke'), 'settings bundle keeps liveliness and volume');
+assert(settingsLegacy.includes('function schliessen') && settingsLegacy.includes('hauptSichtbar'), 'settings bundle hides central fields and can close');
 
 if (fehler) {
   console.error(`${fehler} checks failed`);

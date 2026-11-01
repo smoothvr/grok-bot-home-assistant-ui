@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2026-11-01
+
+### Changed
+
+- Settings only shows sleep, dimming, language, volume, liveliness, the clock, and the demo. Reactions stay in the collapsed list. Anything `config.local.json` already sets is left off the page, including the central-setting notes.
+- Save returns to the face. Close leaves without saving. The reload and back buttons are gone. A new version still arrives through the application cache and through `input_button.eye_ui_reload`.
+- The controls are drawn for the iPad: large stepped choices, a volume slider in steps of 20 percent, and no system dropdowns or checkboxes. The clock still defaults to off. Volume still defaults to 160 percent.
+
 ## [2.2.5] - 2026-11-01
 
 ### Added

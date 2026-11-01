@@ -13,6 +13,7 @@ export const APPCACHE_DATEIEN = [
   'manifest.webmanifest',
   'app.js',
   'settings.js',
+  'einstell.js',
   'settings-legacy.js',
   'legacy.js',
   'engine.js',

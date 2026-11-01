@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
-// Plain settings. Same localStorage key as the face.
+// The few controls that belong on the tablet. Anything the file sets is left off the page.
 import './polyfills.js';
 import {
   demoSperre, geraeteKlasse, istDemoHost, ladeKonfig, setzeKlasse, speichereKonfig, vergissToken,
 } from './konfig.js';
 import { ladeSiteConfig } from './siteconfig.js';
-import { neuLaden } from './laden.js';
-import { dienstAus, gueltigeEntity, normalisiereHaUrl } from './ha.js';
+import { normalisiereHaUrl } from './ha.js';
 import { resolveLocale, translate } from './strings.js';
 import { VERSION } from './version.js';
 import { REAKTION_IDS } from './reaktionen.js';
+import {
+  DIM_PROZENT, DIM_SEK, GESICHT, LEBEN_STUFEN, SCHLAF_MIN, VOL_STUFEN,
+  hauptSichtbar, schnapp,
+} from './einstell.js';
 
 const q = new URLSearchParams(location.search);
 setzeKlasse(geraeteKlasse({
@@ -20,25 +23,9 @@ setzeKlasse(geraeteKlasse({
 let konfig = null;
 let locale = 'en';
 let gesperrt = false;
-
-const ZENTRAL_FELDER = [
-  ['ha-url', 'haUrl'],
-  ['ha-token', 'haToken'],
-  ['ha-entity', 'haEntity'],
-  ['tuer-entity', 'tuer'],
-  ['presence-entity', 'presenceEntity'],
-  ['reminder-entity', 'reminderEntity'],
-  ['reminder-ack', 'reminderAckScript'],
-  ['schlaf-min', 'schlafSekunden'],
-  ['dim-nach', 'dimNachSekunden'],
-  ['dim-stufe', 'dimStufe'],
-  ['sprache', 'lang'],
-  ['alarm-staerke', 'alarmStaerke'],
-  ['ton', 'ton'],
-  ['lautstaerke', 'lautstaerke'],
-  ['lebendigkeit', 'lebendigkeit'],
-  ['uhr-an', 'uhr'],
-];
+let sicht = null;
+let steuer = {};
+let tokenLoeschen = false;
 
 function el(id) { return document.getElementById(id); }
 function t(key) { return translate(locale, key); }
@@ -56,79 +43,174 @@ function applyI18n() {
   document.title = t('settings.title');
 }
 
-function setWert(id, wert) {
+function zeige(id, an) {
   const node = el(id);
-  if (node) node.value = wert == null ? '' : String(wert);
+  if (!node) return;
+  if (an) node.removeAttribute('hidden');
+  else node.setAttribute('hidden', '');
 }
 
-function lies(id) {
-  const node = el(id);
-  return node ? String(node.value || '').trim() : '';
+function minutenText(min) {
+  if (!min) return t('settings.never');
+  return min + ' min';
+}
+
+function dimText(sek) {
+  if (!sek) return t('settings.never');
+  if (sek < 60) return sek + ' s';
+  return Math.round(sek / 60) + ' min';
+}
+
+function baueWahl(id, punkte, aktuell) {
+  const box = el(id);
+  if (!box) return { wert: function () { return aktuell; } };
+  const werte = [];
+  for (let i = 0; i < punkte.length; i++) werte.push(punkte[i].wert);
+  let gewaehlt = schnapp(aktuell, werte);
+  box.innerHTML = '';
+  function malen() {
+    const knoepfe = box.getElementsByTagName('button');
+    const marke = String(gewaehlt);
+    for (let i = 0; i < knoepfe.length; i++) {
+      knoepfe[i].className = 'wahl-knopf' + (knoepfe[i].getAttribute('data-wert') === marke ? ' an' : '');
+    }
+  }
+  for (let i = 0; i < punkte.length; i++) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'wahl-knopf';
+    knopf.setAttribute('data-wert', String(punkte[i].wert));
+    knopf.textContent = punkte[i].text;
+    knopf.addEventListener('click', function () {
+      gewaehlt = Number(this.getAttribute('data-wert'));
+      malen();
+    });
+    box.appendChild(knopf);
+  }
+  malen();
+  return { wert: function () { return gewaehlt; } };
+}
+
+function baueSchieber(id, stufen, aktuell, ziel) {
+  const wurzel = el(id);
+  if (!wurzel) return { wert: function () { return aktuell; } };
+  const leiste = wurzel.getElementsByClassName('schieber-leiste')[0];
+  const fuellung = wurzel.getElementsByClassName('schieber-fuellung')[0];
+  const knopf = wurzel.getElementsByClassName('schieber-knopf')[0];
+  const anzeige = el(ziel);
+  let index = 0;
+  const start = schnapp(aktuell, stufen);
+  for (let i = 0; i < stufen.length; i++) if (stufen[i] === start) index = i;
+  function male() {
+    const u = stufen.length < 2 ? 0 : index / (stufen.length - 1);
+    if (fuellung) fuellung.style.width = (u * 100) + '%';
+    if (knopf) knopf.style.left = (u * 100) + '%';
+    if (anzeige) anzeige.textContent = stufen[index] + ' %';
+  }
+  function vonX(clientX) {
+    const rect = leiste.getBoundingClientRect();
+    const breite = rect.width || 1;
+    let u = (clientX - rect.left) / breite;
+    if (u < 0) u = 0;
+    if (u > 1) u = 1;
+    index = Math.round(u * (stufen.length - 1));
+    male();
+  }
+  function xVon(e) {
+    if (e.touches && e.touches[0]) return e.touches[0].clientX;
+    if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientX;
+    return e.clientX;
+  }
+  let zieh = false;
+  leiste.addEventListener('touchstart', function (e) {
+    zieh = true;
+    vonX(xVon(e));
+    if (e.preventDefault) e.preventDefault();
+  });
+  leiste.addEventListener('touchmove', function (e) {
+    if (!zieh) return;
+    vonX(xVon(e));
+    if (e.preventDefault) e.preventDefault();
+  });
+  leiste.addEventListener('touchend', function () { zieh = false; });
+  leiste.addEventListener('mousedown', function (e) {
+    zieh = true;
+    vonX(e.clientX);
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (!zieh) return;
+    vonX(e.clientX);
+  });
+  window.addEventListener('mouseup', function () { zieh = false; });
+  male();
+  return { wert: function () { return stufen[index]; } };
+}
+
+function baueSchalter(id, an) {
+  const knopf = el(id);
+  if (!knopf) return { wert: function () { return !!an; } };
+  let ein = !!an;
+  function male() {
+    knopf.className = ein ? 'schalter an' : 'schalter';
+    knopf.setAttribute('aria-pressed', ein ? 'true' : 'false');
+  }
+  knopf.addEventListener('click', function () {
+    ein = !ein;
+    male();
+  });
+  male();
+  return { wert: function () { return ein; } };
 }
 
 function fuellen() {
-  setWert('ha-url', konfig.haUrl || '');
-  setWert('ha-token', '');
-  setWert('ha-entity', konfig.haEntity || '');
-  setWert('tuer-entity', konfig.tuer || '');
-  setWert('presence-entity', konfig.presenceEntity || '');
-  setWert('reminder-entity', konfig.reminderEntity || '');
-  setWert('reminder-ack', konfig.reminderAckScript || '');
-  setWert('schlaf-min', String(Math.round((konfig.schlafSekunden || 0) / 60)));
-  setWert('dim-nach', String(konfig.dimNachSekunden ?? 60));
-  setWert('dim-stufe', String(Math.round((konfig.dimStufe ?? 0.3) * 100)));
-  const ton = el('ton');
-  if (ton) ton.checked = !!konfig.ton;
-  setWert('lautstaerke', String(Math.round((konfig.lautstaerke == null ? 1.6 : konfig.lautstaerke) * 100)));
-  setWert('lebendigkeit', String(Math.round((konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit) * 100)));
-  const uhr = el('uhr-an');
-  if (uhr) uhr.checked = !!konfig.uhr;
-  const alarm = el('alarm-staerke');
-  if (alarm) alarm.value = konfig.alarmStaerke === 'normal' ? 'normal' : 'stark';
-  const sprache = el('sprache');
-  if (sprache) sprache.value = konfig.lang || 'auto';
-  const token = el('ha-token');
-  if (token) token.placeholder = konfig.haToken ? t('ph.tokenReplace') : t('ph.tokenEmpty');
+  sicht = hauptSichtbar(konfig.zentral, gesperrt);
+  zeige('feld-schlaf', sicht.schlaf);
+  zeige('feld-dim', sicht.dim);
+  zeige('feld-dim-nach', sicht.dimNach);
+  zeige('feld-dim-stufe', sicht.dimStufe);
+  zeige('feld-sprache', sicht.sprache);
+  zeige('feld-laut', sicht.laut);
+  zeige('feld-leben', sicht.leben);
+  zeige('feld-uhr', sicht.uhr);
+  zeige('feld-demo', sicht.demo);
+  zeige('feld-verbindung', sicht.verbindung);
+  zeige('feld-url', sicht.haUrl);
+  zeige('feld-token', sicht.haToken);
   const fehler = el('form-fehler');
   if (fehler) fehler.textContent = '';
-  const ids = ['ha-url', 'ha-token', 'ha-entity', 'tuer-entity', 'presence-entity', 'reminder-entity', 'reminder-ack'];
-  for (let i = 0; i < ids.length; i++) {
-    const node = el(ids[i]);
-    if (node) node.readOnly = gesperrt;
+  const url = el('ha-url');
+  if (url) url.value = konfig.haUrl || '';
+  const token = el('ha-token');
+  if (token) {
+    token.value = '';
+    token.placeholder = konfig.haToken ? t('ph.tokenReplace') : t('ph.tokenEmpty');
   }
-  const note = el('demo-sperre');
-  if (note) {
-    note.hidden = !gesperrt;
-    note.textContent = gesperrt ? t('demo.locked') : '';
+  const schlafPunkte = [];
+  for (let i = 0; i < SCHLAF_MIN.length; i++) schlafPunkte.push({ wert: SCHLAF_MIN[i], text: minutenText(SCHLAF_MIN[i]) });
+  const dimSek = [];
+  for (let i = 0; i < DIM_SEK.length; i++) dimSek.push({ wert: DIM_SEK[i], text: dimText(DIM_SEK[i]) });
+  const dimProzent = [];
+  for (let i = 0; i < DIM_PROZENT.length; i++) dimProzent.push({ wert: DIM_PROZENT[i], text: DIM_PROZENT[i] + ' %' });
+  const sprachen = [
+    { wert: 0, text: 'Auto', lang: '' },
+    { wert: 1, text: 'Deutsch', lang: 'de' },
+    { wert: 2, text: 'English', lang: 'en' },
+  ];
+  const spracheJetzt = konfig.lang === 'de' ? 1 : (konfig.lang === 'en' ? 2 : 0);
+  const lebenPunkte = [];
+  for (let i = 0; i < LEBEN_STUFEN.length; i++) {
+    lebenPunkte.push({ wert: LEBEN_STUFEN[i].v, text: t('live.' + LEBEN_STUFEN[i].id) });
   }
-  markiereZentral();
-}
-
-function zentralIst(key) {
-  return !!(konfig && konfig.zentral && konfig.zentral.indexOf(key) >= 0);
-}
-
-function markiereZentral() {
-  for (let i = 0; i < ZENTRAL_FELDER.length; i++) {
-    const id = ZENTRAL_FELDER[i][0];
-    const key = ZENTRAL_FELDER[i][1];
-    const node = el(id);
-    if (!node || !zentralIst(key)) continue;
-    const typ = String(node.type || '').toLowerCase();
-    if (node.tagName === 'SELECT' || typ === 'checkbox' || typ === 'range') node.disabled = true;
-    else node.readOnly = true;
-    const hinweis = document.createElement('span');
-    hinweis.className = 'zentral';
-    hinweis.textContent = t('settings.central');
-    const box = node.parentNode && node.parentNode.classList && node.parentNode.classList.contains('check')
-      ? node.parentNode
-      : node.parentNode;
-    if (box) box.appendChild(hinweis);
-  }
-  if (zentralIst('haToken')) {
-    const forget = el('token-loeschen');
-    if (forget) forget.disabled = true;
-  }
+  steuer = {
+    schlaf: baueWahl('schlaf-min', schlafPunkte, Math.round((konfig.schlafSekunden || 0) / 60)),
+    dimNach: baueWahl('dim-nach', dimSek, konfig.dimNachSekunden == null ? 60 : konfig.dimNachSekunden),
+    dimStufe: baueWahl('dim-stufe', dimProzent, Math.round((konfig.dimStufe == null ? 0.3 : konfig.dimStufe) * 100)),
+    sprache: baueWahl('sprache', sprachen, spracheJetzt),
+    laut: baueSchieber('lautstaerke', VOL_STUFEN, Math.round((konfig.lautstaerke == null ? 1.6 : konfig.lautstaerke) * 100), 'laut-wert'),
+    leben: baueWahl('lebendigkeit', lebenPunkte, konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit),
+    uhr: baueSchalter('uhr-an', !!konfig.uhr),
+  };
+  steuer.sprachen = sprachen;
 }
 
 function melden(key) {
@@ -136,65 +218,41 @@ function melden(key) {
   if (node) node.textContent = t(key);
 }
 
-function uebernehmen(k) {
-  if (!zentralIst('schlafSekunden')) k.schlafSekunden = Math.max(0, Math.round(Number(lies('schlaf-min')) * 60) || 0);
-  if (!zentralIst('dimNachSekunden')) k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(Number(lies('dim-nach'))) || 0));
-  if (!zentralIst('dimStufe')) k.dimStufe = Math.max(0.05, Math.min(1, (Math.round(Number(lies('dim-stufe'))) || 30) / 100));
-  if (!zentralIst('ton')) k.ton = !!(el('ton') && el('ton').checked);
-  if (!zentralIst('lautstaerke')) k.lautstaerke = Math.max(0, Math.min(2, (Math.round(Number(lies('lautstaerke'))) || 0) / 100));
-  if (!zentralIst('lebendigkeit')) k.lebendigkeit = Math.max(0, Math.min(1, (Math.round(Number(lies('lebendigkeit'))) || 0) / 100));
-  if (!zentralIst('uhr')) k.uhr = !!(el('uhr-an') && el('uhr-an').checked);
-  if (!zentralIst('lang')) {
-    const gewaehlt = lies('sprache');
-    k.lang = gewaehlt === 'auto' ? '' : gewaehlt;
-  }
-  if (!zentralIst('alarmStaerke')) k.alarmStaerke = lies('alarm-staerke') === 'normal' ? 'normal' : 'stark';
+function schliessen() {
+  location.href = 'index.html';
 }
 
 function speichern(ev) {
   if (ev && ev.preventDefault) ev.preventDefault();
   const k = { ...konfig };
-  const loeschen = !!(el('token-loeschen') && el('token-loeschen').checked);
-  if (!gesperrt) {
-    if (!zentralIst('haUrl')) {
-      const urlRoh = lies('ha-url');
-      if (urlRoh) {
-        const url = normalisiereHaUrl(urlRoh);
-        if (!url) { melden('err.url'); return; }
-        k.haUrl = url;
-      } else k.haUrl = '';
-    }
-    if (!zentralIst('haToken')) {
-      const token = lies('ha-token');
-      if (loeschen) k.haToken = '';
-      else if (token) k.haToken = token;
-    }
-    const felder = [
-      ['ha-entity', 'haEntity'],
-      ['tuer-entity', 'tuer'],
-      ['presence-entity', 'presenceEntity'],
-      ['reminder-entity', 'reminderEntity'],
-    ];
-    for (let i = 0; i < felder.length; i++) {
-      if (zentralIst(felder[i][1])) continue;
-      const wert = lies(felder[i][0]).toLowerCase();
-      if (wert && !gueltigeEntity(wert)) { melden('err.entity'); return; }
-      k[felder[i][1]] = wert;
-    }
-    if (!zentralIst('reminderAckScript')) {
-      const ack = lies('reminder-ack').toLowerCase();
-      if (ack && !dienstAus(ack)) { melden('err.entity'); return; }
-      k.reminderAckScript = ack;
-    }
+  if (sicht.schlaf) k.schlafSekunden = Math.max(0, Math.round(steuer.schlaf.wert() * 60) || 0);
+  if (sicht.dimNach) k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(steuer.dimNach.wert()) || 0));
+  if (sicht.dimStufe) k.dimStufe = Math.max(0.05, Math.min(1, steuer.dimStufe.wert() / 100));
+  if (sicht.laut) k.lautstaerke = Math.max(0, Math.min(2, steuer.laut.wert() / 100));
+  if (sicht.leben) k.lebendigkeit = Math.max(0, Math.min(1, steuer.leben.wert()));
+  if (sicht.uhr) k.uhr = !!steuer.uhr.wert();
+  if (sicht.sprache) {
+    const gewaehlt = steuer.sprache.wert();
+    let lang = '';
+    for (let i = 0; i < steuer.sprachen.length; i++) if (steuer.sprachen[i].wert === gewaehlt) lang = steuer.sprachen[i].lang;
+    k.lang = lang;
   }
-  uebernehmen(k);
-  speichereKonfig(k, undefined, { tokenLoeschen: !gesperrt && loeschen && !zentralIst('haToken') });
+  if (sicht.haUrl) {
+    const urlRoh = el('ha-url') ? String(el('ha-url').value || '').trim() : '';
+    if (urlRoh) {
+      const url = normalisiereHaUrl(urlRoh);
+      if (!url) { melden('err.url'); return; }
+      k.haUrl = url;
+    } else k.haUrl = '';
+  }
+  if (sicht.haToken) {
+    const token = el('ha-token') ? String(el('ha-token').value || '').trim() : '';
+    if (tokenLoeschen) k.haToken = '';
+    else if (token) k.haToken = token;
+  }
+  speichereKonfig(k, undefined, { tokenLoeschen: sicht.haToken && tokenLoeschen });
   if (gesperrt) vergissToken();
   location.href = 'index.html';
-}
-
-function cacheObjekt() {
-  try { return window.applicationCache || null; } catch (err) { return null; }
 }
 
 async function starten() {
@@ -211,10 +269,26 @@ async function starten() {
   baueVorschau();
   const form = el('form');
   if (form) form.addEventListener('submit', speichern);
-  const neu = el('neu-laden');
-  if (neu) neu.addEventListener('click', () => neuLaden(cacheObjekt(), () => { location.reload(); }));
+  const zu = el('schliessen');
+  if (zu) zu.addEventListener('click', schliessen);
+  const demo = el('demo-start');
+  if (demo) demo.addEventListener('click', function () { location.href = 'index.html?lauf=1'; });
+  const verbinden = el('verbindung');
+  if (verbinden) verbinden.addEventListener('click', function () {
+    const kasten = el('verbindung-kasten');
+    if (!kasten) return;
+    if (kasten.hasAttribute('hidden')) kasten.removeAttribute('hidden');
+    else kasten.setAttribute('hidden', '');
+  });
+  const vergiss = el('token-loeschen');
+  if (vergiss) vergiss.addEventListener('click', function () {
+    tokenLoeschen = true;
+    const token = el('ha-token');
+    if (token) token.value = '';
+    vergiss.disabled = true;
+  });
   const klingelTest = el('klingel-test');
-  if (klingelTest) klingelTest.addEventListener('click', () => { location.href = 'index.html?klingel=1'; });
+  if (klingelTest) klingelTest.addEventListener('click', function () { location.href = 'index.html?klingel=1'; });
 }
 
 starten();
@@ -230,7 +304,7 @@ function baueVorschau() {
     button.type = 'button';
     button.className = 'preview-btn';
     button.textContent = id;
-    button.addEventListener('click', () => {
+    button.addEventListener('click', function () {
       location.href = 'index.html?demo=0&reaction=' + encodeURIComponent(id);
     });
     box.appendChild(button);
