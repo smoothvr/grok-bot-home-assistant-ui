@@ -12,6 +12,9 @@
   "ton": true,
   "volume": 160,
   "reloadEntity": "input_button.eye_ui_reload",
+  "doorbellEntity": "binary_sensor.klingel_haustuer",
+  "doorbellCamera": "camera.hofkamera",
+  "doorbellHoldSeconds": 90,
   "uhr": false,
   "demo": false
 }

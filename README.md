@@ -84,6 +84,9 @@ Suggested helpers:
 - `binary_sensor.front_door` for the angry hold
 - `binary_sensor.living_room_presence` for the wake
 - `input_button.eye_ui_reload` to reload the page when its last-pressed time changes. The first value after connect is ignored. A missing helper does nothing. `reloadEntity` in `config.local.json` can name another button.
+- `binary_sensor.klingel_haustuer` for the doorbell. Each off-to-on edge is one ring. The first state after connect is ignored. `doorbellEntity` can name another sensor.
+- `camera.hofkamera` for the doorbell picture (`doorbellCamera`). The page reads `access_token` from that camera and opens `/api/camera_proxy_stream/<entity>?token=...`, then a snapshot once a second if the stream does not show a frame. The Home Assistant address is the host in `haUrl`. A missing camera or a failed picture leaves the eyes full size, with no empty frame. `camera.gartenkamera` can be put in `doorbellCamera` later. Nothing else listens for a garden bell.
+- `doorbellHoldSeconds` keeps that view open. The default is 90. Another ring extends it. A tap outside the picture closes it.
 
 `option: angry` still works from an automation. `input_boolean.eye_guard` can set that option while a guard is on. The page itself holds angry for as long as the door entity is open, and returns to idle when the door closes.
 
@@ -91,7 +94,7 @@ The socket sends `ping` every 30 seconds and reconnects if `pong` does not arriv
 
 ### Security
 
-On your own device the token stays only in that browser's localStorage. It is never put in a URL or sent anywhere except your Home Assistant. Every key present in `config.local.json` wins over the value stored on the iPad. A stored value is used only for a key the file does not contain. Settings shows those fields as centrally set, so a change there is not saved over the file. `volume` is a percent from 0 to 200. `reloadEntity` defaults to `input_button.eye_ui_reload`. `presenceEntity`, `reminderEntity`, and `reminderAckScript` still work. See `web/config.example.json`. A URL parameter still wins for one visit. The file is readable by anyone on the LAN, so use a non-admin, local-only Home Assistant user. On the public demo host the address and the token from that file are ignored, and no token is ever stored.
+On your own device the token stays only in that browser's localStorage. It is never put in a URL or sent anywhere except your Home Assistant. Every key present in `config.local.json` wins over the value stored on the iPad. A stored value is used only for a key the file does not contain. Settings shows those fields as centrally set, so a change there is not saved over the file. `volume` is a percent from 0 to 200. `reloadEntity` defaults to `input_button.eye_ui_reload`. `doorbellEntity`, `doorbellCamera`, and `doorbellHoldSeconds` set the doorbell. `presenceEntity`, `reminderEntity`, and `reminderAckScript` still work. See `web/config.example.json`. A URL parameter still wins for one visit. The file is readable by anyone on the LAN, so use a non-admin, local-only Home Assistant user. On the public demo host the address and the token from that file are ignored, and no token is ever stored.
 
 ## License
 

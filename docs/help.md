@@ -34,6 +34,8 @@ The usual names are `input_select.eye_ui_state`, `input_text.eye_hinweis`, and `
 
 A door entity such as `binary_sensor.front_door` holds angry while it is open and relaxes when it closes. `speaking` lights the speaking colour while the eyes stay idle.
 
+A doorbell (`doorbellEntity`, usually `binary_sensor.klingel_haustuer`) wakes the face and plays a curious phrase. The edge turns a porch gold, not red. When `camera.hofkamera` has a picture, the eyes ease down to the bottom-right corner and the courtyard fills the upper left for `doorbellHoldSeconds` (90 unless you change it). Another ring extends that. A tap outside the picture returns to the face. The stream is tried first, then a snapshot once a second. If there is no picture, the eyes stay full size and no empty frame is shown. The demo loop uses a bundled abstract courtyard so the layout can be seen without Home Assistant. `camera.gartenkamera` can be named in `doorbellCamera` later.
+
 `?ha=mock` plays states on this device without a server.
 
 The socket sends `ping` every 30 seconds. If `pong` is missing for 10 seconds, it reconnects. `online` and a visible page reconnect as well. `auth_invalid` shows the calm line and retries every 60 seconds.

@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5] - 2026-11-01
+
+### Added
+
+- Doorbell view. A rising edge on `binary_sensor.klingel_haustuer` wakes the face, plays a curious phrase, and tints the edge porch gold. When the courtyard camera has a picture, the eyes ease into the bottom-right corner and the image sits large in the upper left. The view holds for 90 seconds, longer on each new ring. A tap on the small eyes, or anywhere outside the picture, returns to the face. The first state after connect is ignored.
+- The picture uses `camera.hofkamera` and that entity's `access_token`. The stream is tried first. If it does not show a frame, the page falls back to a snapshot once a second. No camera, no token, or a failed picture leaves the eyes full size. There is no empty frame.
+- The public demo loop shows the same layout with a bundled abstract courtyard. Settings has a quiet Klingel testen control for that picture. `camera.gartenkamera` can be named in `doorbellCamera` later. Nothing else listens for a garden bell.
+
 ## [2.2.4] - 2026-11-01
 
 ### Added

@@ -4,6 +4,7 @@ import { ECKEN_VORGABE, GESTEN_VORGABE, istAltesLayout, normEcken, normEigene, n
 import { normDash } from './dashboard.js';
 import { ECK } from './gesten.js';
 import { dienstAus, gueltigeEntity, normalisiereHaUrl } from './ha.js';
+import { KLINGEL_ENTITY, KLINGEL_HOLD_S, KLINGEL_KAMERA } from './klingel.js';
 import { KURZ } from './namen.js';
 import { localeCode } from './strings.js';
 
@@ -81,6 +82,9 @@ export const VORGABE = {
   lebendigkeit: 0.42,
   lautstaerke: 1.6,
   reloadEntity: 'input_button.eye_ui_reload',
+  doorbellEntity: KLINGEL_ENTITY,
+  doorbellCamera: KLINGEL_KAMERA,
+  doorbellHoldSeconds: KLINGEL_HOLD_S,
   label: false,
   caption: true,
   uhr: false,
@@ -188,6 +192,16 @@ export function siteNachKonfig(datei) {
   delete src.reminder_ack;
   if (src.camera && !src.kamera) src.kamera = src.camera;
   delete src.camera;
+  if (src.doorbell_entity && !src.doorbellEntity) src.doorbellEntity = src.doorbell_entity;
+  if (src.doorbell && !src.doorbellEntity) src.doorbellEntity = src.doorbell;
+  delete src.doorbell_entity;
+  delete src.doorbell;
+  if (src.doorbell_camera && !src.doorbellCamera) src.doorbellCamera = src.doorbell_camera;
+  delete src.doorbell_camera;
+  if (src.doorbell_hold != null && src.doorbellHoldSeconds == null) src.doorbellHoldSeconds = src.doorbell_hold;
+  if (src.doorbellHold != null && src.doorbellHoldSeconds == null) src.doorbellHoldSeconds = src.doorbellHold;
+  delete src.doorbell_hold;
+  delete src.doorbellHold;
   if (src.dimAfter != null && src.dimNachSekunden == null) src.dimNachSekunden = src.dimAfter;
   delete src.dimAfter;
   if (src.dimLevel != null && src.dimStufe == null) src.dimStufe = src.dimLevel;
@@ -274,6 +288,18 @@ function nurBekannte(obj) {
   if ('reloadEntity' in out) {
     const id = String(out.reloadEntity || '').trim().toLowerCase();
     out.reloadEntity = id && gueltigeEntity(id) ? id : '';
+  }
+  if ('doorbellEntity' in out) {
+    const id = String(out.doorbellEntity || '').trim().toLowerCase();
+    out.doorbellEntity = id && gueltigeEntity(id) ? id : '';
+  }
+  if ('doorbellCamera' in out) {
+    const id = String(out.doorbellCamera || '').trim().toLowerCase();
+    out.doorbellCamera = id && gueltigeEntity(id) ? id : '';
+  }
+  if ('doorbellHoldSeconds' in out) {
+    const n = Math.round(Number(out.doorbellHoldSeconds));
+    out.doorbellHoldSeconds = n >= 5 && n <= 600 ? n : KLINGEL_HOLD_S;
   }
   if ('kamera' in out) {
     const id = String(out.kamera || '').trim().toLowerCase();

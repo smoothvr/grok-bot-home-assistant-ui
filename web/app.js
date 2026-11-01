@@ -30,6 +30,11 @@ import { createStimme, pulsHuelle, bauePhrase } from './stimme.js';
 import {
   createSchleife, ersteRunde, ohneHaus, schrittPause, sollWillkommen, tippFenster,
 } from './empfang.js';
+import {
+  DEMO_KLINGEL_S, KLINGEL_FARBE, TESTBILD,
+  augenPlatz, bildPlatz, bildSchritt, demoKlingelFaellig, haBasis, halteBis,
+  kameraSrc, klingelKante, layoutSchritt, tippSchliesst, zugangToken,
+} from './klingel.js';
 
 const q = new URLSearchParams(location.search);
 const ON = await (await fetch('onsets.json')).json();
@@ -99,10 +104,26 @@ let tippGesamt = 0;
 let einmal = [];
 let einmalPos = 0;
 let schleife = createSchleife();
+let schleifeN = 0;
 let schrittBis = 0;
 let stimmung = null;
 const LANG_MS = 720;
 const reloadGesehen = { bereit: false, wert: '' };
+const klingelGesehen = { bereit: false, an: false };
+let klingelToken = '';
+let klingelImgFertig = false;
+let klingelFrisst = false;
+const klingel = {
+  aktiv: false,
+  test: false,
+  bis: 0,
+  u: 0,
+  ziel: 0,
+  schliessen: false,
+  halten: false,
+  demoWeiter: false,
+  stand: { art: 'aus', seit: 0, bildDa: false, gescheitert: false, token: '' },
+};
 
 function cacheObjekt() {
   try { return window.applicationCache || null; } catch (err) { return null; }
@@ -250,7 +271,7 @@ function istStoerung() {
 function zeichneCaption() {
   const node = el('caption');
   if (!node) return;
-  if (modus === 'schlaf') {
+  if (modus === 'schlaf' || klingel.aktiv) {
     node.hidden = true;
     node.textContent = '';
     return;
@@ -466,6 +487,22 @@ function onStates(liste) {
     if (konfig.reloadEntity && String(e.entity_id).toLowerCase() === konfig.reloadEntity) {
       if (reloadImpuls(reloadGesehen, e.state)) seiteNeuLaden();
     }
+    if (konfig.doorbellEntity && String(e.entity_id).toLowerCase() === konfig.doorbellEntity) {
+      if (klingelKante(klingelGesehen, e.state)) starteKlingel();
+    }
+    if (konfig.doorbellCamera && String(e.entity_id).toLowerCase() === konfig.doorbellCamera) {
+      const tok = zugangToken(e.attributes);
+      if (tok && tok !== klingelToken) {
+        const zuerst = !klingelToken;
+        klingelToken = tok;
+        if (klingel.aktiv && !klingel.test && (zuerst || klingel.stand.art === 'aus' || klingel.stand.art === 'keins')) {
+          starteKamera(tok, performance.now());
+        } else if (klingel.aktiv && !klingel.test) {
+          klingel.stand = { ...klingel.stand, token: tok };
+          wendeBild(performance.now());
+        }
+      }
+    }
   }
 }
 
@@ -484,7 +521,7 @@ function setStatus(s) {
 function syncHearHint() {
   const node = el('hear-hint');
   if (!node) return;
-  const ruhig = modus === 'schlaf' || modus === 'einmal' || modus === 'loop';
+  const ruhig = modus === 'schlaf' || modus === 'einmal' || modus === 'loop' || klingel.aktiv;
   node.hidden = !!audioFrei || ruhig;
   if (!node.hidden) node.textContent = t('hint.hear');
 }
@@ -505,13 +542,13 @@ function syncDim(dt) {
   if (!node) return;
   let ziel = helligkeit(waechter.ruhe(), konfig.schlafSekunden, konfig);
   if (waechter.schlaeft && modus === 'normal') ziel = Math.min(ziel, konfig.dimStufe || 0.3);
-  if (schauLaeuft || hinweis.offen || tuerAuf || modus === 'schlaf' || modus === 'einmal' || modus === 'loop') ziel = 1;
+  if (schauLaeuft || hinweis.offen || tuerAuf || klingel.aktiv || modus === 'schlaf' || modus === 'einmal' || modus === 'loop') ziel = 1;
   dimIst += (ziel - dimIst) * Math.min(1, (dt || 0.016) * 2);
   node.style.opacity = String(Math.max(0, Math.min(0.92, 1 - dimIst)));
 }
 
 function syncPause() {
-  const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || modus === 'schlaf' || modus === 'einmal' || modus === 'loop');
+  const pausieren = !!(hinweis.offen || schauLaeuft || tuerAuf || klingel.aktiv || modus === 'schlaf' || modus === 'einmal' || modus === 'loop');
   if (pausieren === pauseAn) return;
   pauseAn = pausieren;
   waechter.setPause(pausieren);
@@ -596,7 +633,7 @@ function beiSicht() {
 }
 
 function pruefeStoerung() {
-  if (modus === 'schlaf' || modus === 'einmal' || modus === 'loop') return;
+  if (klingel.aktiv || modus === 'schlaf' || modus === 'einmal' || modus === 'loop') return;
   const an = istStoerung();
   if (!an) {
     stoerungAktiv = false;
@@ -649,17 +686,200 @@ function starteEinmal() {
   syncHearHint();
 }
 
+function klingelSekunden(opt) {
+  if (opt && opt.sekunden) return opt.sekunden;
+  const n = Number(konfig.doorbellHoldSeconds);
+  return n >= 5 ? n : 90;
+}
+
+function klingelBild() {
+  const img = el('klingel');
+  if (!img || klingelImgFertig) return img;
+  klingelImgFertig = true;
+  img.addEventListener('load', () => {
+    if (!klingel.aktiv) return;
+    klingel.stand = bildSchritt(klingel.stand, 'load', performance.now());
+    if (klingel.stand.bildDa && !klingel.schliessen) klingel.ziel = 1;
+  });
+  img.addEventListener('error', () => {
+    if (!img.getAttribute('src') || !klingel.aktiv) return;
+    klingel.stand = bildSchritt(klingel.stand, 'error', performance.now());
+    wendeBild(performance.now());
+    if (klingel.stand.gescheitert) klingel.ziel = 0;
+  });
+  return img;
+}
+
+function bildUrl(stand, jetzt) {
+  const art = stand.src || stand.art;
+  if (art === 'test') return TESTBILD;
+  if (art !== 'stream' && art !== 'snapshot') return '';
+  let url = kameraSrc(haBasis(konfig.haUrl), konfig.doorbellCamera, stand.token, art);
+  if (art === 'snapshot' && url) url += '&_=' + Math.floor((Number(jetzt) || 0) / 1000);
+  return url;
+}
+
+function wendeBild(jetzt) {
+  const img = klingelBild();
+  if (!img) return;
+  const url = klingel.stand.zeigen ? bildUrl(klingel.stand, jetzt) : '';
+  if (!url) {
+    img.style.opacity = '0';
+    img.style.pointerEvents = 'none';
+    if (img.getAttribute('src')) {
+      img.removeAttribute('src');
+      img.removeAttribute('data-src');
+    }
+    return;
+  }
+  if (img.getAttribute('data-src') !== url) {
+    img.setAttribute('data-src', url);
+    img.src = url;
+  }
+}
+
+function zeichneKlingelBild(w, h) {
+  const img = el('klingel');
+  if (!img) return;
+  const pl = bildPlatz(w, h, klingel.u);
+  const sichtbar = !!(klingel.stand.bildDa && klingel.u > 0.02);
+  const op = sichtbar ? pl.opacity : 0;
+  img.style.left = pl.x + 'px';
+  img.style.top = pl.y + 'px';
+  img.style.width = pl.w + 'px';
+  img.style.height = pl.h + 'px';
+  img.style.opacity = String(op);
+  img.style.pointerEvents = op > 0.35 ? 'auto' : 'none';
+}
+
+function versteckeKlingelBild() {
+  const img = el('klingel');
+  if (!img) return;
+  img.style.opacity = '0';
+  img.style.pointerEvents = 'none';
+  if (img.getAttribute('src')) {
+    img.removeAttribute('src');
+    img.removeAttribute('data-src');
+  }
+}
+
+function zeigeTestbild(jetzt) {
+  klingel.stand = { art: 'test', seit: jetzt, bildDa: false, gescheitert: false, token: '', zeigen: true, src: 'test' };
+  const img = klingelBild();
+  if (!img) return;
+  if (img.getAttribute('data-src') === TESTBILD && img.complete && img.naturalWidth > 0) {
+    klingel.stand.bildDa = true;
+    if (!klingel.schliessen) klingel.ziel = 1;
+    return;
+  }
+  wendeBild(jetzt);
+}
+
+function starteKamera(tok, jetzt) {
+  klingel.stand = bildSchritt({ art: 'aus', seit: 0, bildDa: false, gescheitert: false, token: tok }, 'start', jetzt);
+  if (!klingel.stand.bildDa) klingel.ziel = 0;
+  wendeBild(jetzt);
+}
+
+function klingelSchliessen() {
+  if (!klingel.aktiv || klingel.schliessen) return;
+  klingel.schliessen = true;
+  klingel.ziel = 0;
+  klingel.halten = false;
+}
+
+function starteKlingel(opt) {
+  const o = opt || {};
+  if (tuerAuf && !o.test && !o.demoWeiter) return;
+  const jetzt = performance.now();
+  const test = !!o.test;
+  const schon = klingel.aktiv && !klingel.schliessen;
+  if (!o.demoWeiter) {
+    if (schauLaeuft) {
+      schauLaeuft = false;
+      if (demoMusik.playing) demoMusik.stop();
+    }
+    if (modus === 'schlaf' || modus === 'einmal' || modus === 'loop') modus = 'normal';
+    if (hinweisQuelle === 'demo') {
+      hinweis.quittieren();
+      const node = el('hinweis');
+      if (node) node.hidden = true;
+    }
+  }
+  waechter.beruehrt();
+  waechter.setPause(true);
+  pauseAn = true;
+  klingel.aktiv = true;
+  if (bildKurz === 'schlafen') wendeZustand('idle', { ton: false, erzwingen: true });
+  spieleReaktion('curious', { ton: true, erzwingen: true, gain: 0.92 });
+  stimmung = { rgb: KLINGEL_FARBE.slice(), licht: 'sprechen', heard: jetzt, peak: 0 };
+  klingel.bis = halteBis(jetzt, schon ? klingel.bis : 0, klingelSekunden(o));
+  klingel.schliessen = false;
+  klingel.halten = true;
+  klingel.test = test;
+  klingel.demoWeiter = o.demoWeiter ? true : false;
+  if (test) zeigeTestbild(jetzt);
+  else if (konfig.doorbellCamera && klingelToken && (!schon || klingel.stand.art === 'test' || klingel.stand.art === 'keins' || klingel.stand.art === 'aus')) {
+    starteKamera(klingelToken, jetzt);
+  } else if (!klingel.stand.bildDa || klingel.stand.art === 'test') {
+    klingel.ziel = 0;
+    klingel.stand = { art: 'keins', seit: jetzt, bildDa: false, gescheitert: false, token: '', zeigen: false, src: '' };
+    versteckeKlingelBild();
+  } else klingel.ziel = 1;
+  syncHearHint();
+}
+
+function tickKlingel(now, dt) {
+  if (!klingel.aktiv && klingel.u === 0) {
+    renderer.setPreview(null);
+    return;
+  }
+  if (klingel.aktiv && !klingel.schliessen && now >= klingel.bis) klingelSchliessen();
+  klingel.u = layoutSchritt(klingel.u, klingel.ziel, dt);
+  if (klingel.aktiv && (klingel.stand.art === 'stream' || klingel.stand.art === 'snapshot')) {
+    const neu = bildSchritt(klingel.stand, 'tick', now);
+    if (neu.art !== klingel.stand.art || neu.neu) {
+      klingel.stand = neu;
+      wendeBild(now);
+      if (neu.gescheitert) klingel.ziel = 0;
+    }
+  }
+  const w = window.innerWidth || 1;
+  const h = window.innerHeight || 1;
+  renderer.setPreview(augenPlatz(w, h, klingel.u));
+  zeichneKlingelBild(w, h);
+  if (klingel.schliessen && klingel.u === 0) {
+    const weiter = klingel.demoWeiter;
+    klingel.aktiv = false;
+    klingel.schliessen = false;
+    klingel.halten = false;
+    klingel.demoWeiter = false;
+    klingel.ziel = 0;
+    klingel.stand = { art: 'aus', seit: now, bildDa: false, gescheitert: false, token: '', zeigen: false, src: '' };
+    versteckeKlingelBild();
+    renderer.setPreview(null);
+    if (weiter) schrittBis = now;
+  }
+}
+
 function tickVorfuehrung(now) {
+  if (klingel.aktiv || klingel.u > 0.02) return;
   if (modus !== 'einmal' && modus !== 'loop') return;
   if (now < schrittBis) return;
   if (modus === 'einmal') {
     einmalPos += 1;
     if (einmalPos >= einmal.length) {
       modus = 'loop';
-      spieleFest(schleife.naechste(), true);
+      schleifeN = 0;
+      starteKlingel({ test: true, sekunden: DEMO_KLINGEL_S, demoWeiter: true });
       return;
     }
     spieleFest(einmal[einmalPos], false);
+    return;
+  }
+  schleifeN += 1;
+  if (demoKlingelFaellig(schleifeN)) {
+    starteKlingel({ test: true, sekunden: DEMO_KLINGEL_S, demoWeiter: true });
     return;
   }
   spieleFest(schleife.naechste(), true);
@@ -681,8 +901,16 @@ function frame(now) {
   tickVorfuehrung(now);
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  tickKlingel(now, dt);
   syncPause();
   pruefeStoerung();
+  if (klingel.u > 0.3) {
+    const w = window.innerWidth || 1;
+    const h = window.innerHeight || 1;
+    const pl = bildPlatz(w, h, 1);
+    const z = blickZumPunkt(pl.x + pl.w * 0.4, pl.y + pl.h * 0.42, w, h);
+    augen.schau(z.gx, z.gy);
+  }
   const pose = legeReaktion(augen.tick(dt));
   if (!pauseAn && waechter.tick() === 'einschlafen') {
     wecker.eingeschlafen();
@@ -699,11 +927,13 @@ function frame(now) {
   else if (hinweis.offen || now < wachBis) lichtKurz = 'verstanden';
   const befehl = lichtBefehl(lichtKurz, { alarmStark: konfig.alarmStaerke !== 'normal' });
   const puls = pulsHuelle(now, scheinPulse);
+  if (klingel.aktiv && klingel.halten && stimmung) stimmung.heard = now;
+  const env = klingel.aktiv && klingel.halten ? Math.max(puls, 0.5) : puls;
   let zustand = befehl.name;
   let rgb = befehl.rgb;
   let override = null;
   if (!befehl.alarm && stimmung) {
-    const schritt = stimmungSchritt(stimmung, puls, now);
+    const schritt = stimmungSchritt(stimmung, env, now);
     if (!schritt) stimmung = null;
     else {
       zustand = schritt.licht;
@@ -738,7 +968,8 @@ const sequence = param('sequence', 'sequenz');
 const reaktionStart = param('reaction', 'reaktion');
 const willkommen = sollWillkommen(konfig, location, q);
 if (startState) wendeZustand(startState, { ton: false, erzwingen: true });
-if (param('lauf') === '1' && !startState && !sequence) starteEinmal();
+if (q.get('klingel') === '1') starteKlingel({ test: true });
+else if (param('lauf') === '1' && !startState && !sequence) starteEinmal();
 else if (param('tour', 'ablauf') || (param('demo') === '1' && !startState && !sequence && !reaktionStart)) starteSchau();
 else if (reaktionStart && istReaktion(reaktionStart)) {
   reaktionHoren = reaktionStart;
@@ -797,6 +1028,13 @@ if (ecke) {
 
 onZeiger(document.body, 'down', (e) => {
   ersterKontakt();
+  if (klingel.aktiv && !klingel.schliessen) {
+    const pl = bildPlatz(window.innerWidth || 1, window.innerHeight || 1, 1);
+    const sichtbar = !!(klingel.stand.bildDa && klingel.u > 0.35);
+    klingelFrisst = true;
+    if (tippSchliesst(e.clientX, e.clientY, pl, sichtbar)) klingelSchliessen();
+    return;
+  }
   if (zielId(e.target)) return;
   if (modus === 'schlaf') {
     starteEinmal();
@@ -838,6 +1076,11 @@ onZeiger(document.body, 'move', (e) => {
   }
 });
 onZeiger(document.body, 'up', (e) => {
+  if (klingelFrisst) {
+    klingelFrisst = false;
+    druck = null;
+    return;
+  }
   if (!druck) return;
   const lang = druck.lang;
   const moved = Math.abs(e.clientX - druck.x) > 28 || Math.abs(e.clientY - druck.y) > 28;

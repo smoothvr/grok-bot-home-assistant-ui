@@ -337,6 +337,11 @@
   // web/gesten.js
   var ECK = 128;
 
+  // web/klingel.js
+  var KLINGEL_ENTITY = "binary_sensor.klingel_haustuer";
+  var KLINGEL_KAMERA = "camera.hofkamera";
+  var KLINGEL_HOLD_S = 90;
+
   // web/strings.js
   var UI = {
     en: {
@@ -549,6 +554,7 @@
       "err.entity": "Write the entity as domain.object, for example input_select.eye_ui_state.",
       "action.save": "Save",
       "action.reload": "Reload",
+      "doorbell.test": "Test the doorbell",
       "settings.central": "Set centrally",
       "action.close": "Close",
       "action.tour": "Play all states",
@@ -862,6 +868,7 @@
       "err.entity": "Die Entity als domain.objekt schreiben, zum Beispiel input_select.eye_ui_state.",
       "action.save": "Speichern",
       "action.reload": "Neu laden",
+      "doorbell.test": "Klingel testen",
       "settings.central": "zentral gesetzt",
       "action.close": "Schlie\xDFen",
       "action.tour": "Alle Zust\xE4nde",
@@ -1046,6 +1053,9 @@
     lebendigkeit: 0.42,
     lautstaerke: 1.6,
     reloadEntity: "input_button.eye_ui_reload",
+    doorbellEntity: KLINGEL_ENTITY,
+    doorbellCamera: KLINGEL_KAMERA,
+    doorbellHoldSeconds: KLINGEL_HOLD_S,
     label: false,
     caption: true,
     uhr: false,
@@ -1136,6 +1146,16 @@
     delete src.reminder_ack;
     if (src.camera && !src.kamera) src.kamera = src.camera;
     delete src.camera;
+    if (src.doorbell_entity && !src.doorbellEntity) src.doorbellEntity = src.doorbell_entity;
+    if (src.doorbell && !src.doorbellEntity) src.doorbellEntity = src.doorbell;
+    delete src.doorbell_entity;
+    delete src.doorbell;
+    if (src.doorbell_camera && !src.doorbellCamera) src.doorbellCamera = src.doorbell_camera;
+    delete src.doorbell_camera;
+    if (src.doorbell_hold != null && src.doorbellHoldSeconds == null) src.doorbellHoldSeconds = src.doorbell_hold;
+    if (src.doorbellHold != null && src.doorbellHoldSeconds == null) src.doorbellHoldSeconds = src.doorbellHold;
+    delete src.doorbell_hold;
+    delete src.doorbellHold;
     if (src.dimAfter != null && src.dimNachSekunden == null) src.dimNachSekunden = src.dimAfter;
     delete src.dimAfter;
     if (src.dimLevel != null && src.dimStufe == null) src.dimStufe = src.dimLevel;
@@ -1222,6 +1242,18 @@
     if ("reloadEntity" in out) {
       const id = String(out.reloadEntity || "").trim().toLowerCase();
       out.reloadEntity = id && gueltigeEntity(id) ? id : "";
+    }
+    if ("doorbellEntity" in out) {
+      const id = String(out.doorbellEntity || "").trim().toLowerCase();
+      out.doorbellEntity = id && gueltigeEntity(id) ? id : "";
+    }
+    if ("doorbellCamera" in out) {
+      const id = String(out.doorbellCamera || "").trim().toLowerCase();
+      out.doorbellCamera = id && gueltigeEntity(id) ? id : "";
+    }
+    if ("doorbellHoldSeconds" in out) {
+      const n = Math.round(Number(out.doorbellHoldSeconds));
+      out.doorbellHoldSeconds = n >= 5 && n <= 600 ? n : KLINGEL_HOLD_S;
     }
     if ("kamera" in out) {
       const id = String(out.kamera || "").trim().toLowerCase();
@@ -1587,7 +1619,7 @@
   }
 
   // web/version.js
-  var VERSION = "2.2.4";
+  var VERSION = "2.2.5";
 
   // web/zustaende.js
   var RING = {
@@ -2026,6 +2058,10 @@
       if (neu) neu.addEventListener("click", () => neuLaden(cacheObjekt(), () => {
         location.reload();
       }));
+      const klingelTest = el("klingel-test");
+      if (klingelTest) klingelTest.addEventListener("click", () => {
+        location.href = "index.html?klingel=1";
+      });
     });
   }
   starten();

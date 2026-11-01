@@ -31,6 +31,7 @@ export function sollWillkommen(konfig, ort, params) {
   if (p.get('sequence') || p.get('sequenz')) return false;
   if (p.get('ha') === 'mock') return false;
   if (p.get('welcome') === '0') return false;
+  if (p.get('klingel') === '1') return false;
   return ohneHaus(konfig, ort);
 }
 

@@ -213,6 +213,8 @@ async function starten() {
   if (form) form.addEventListener('submit', speichern);
   const neu = el('neu-laden');
   if (neu) neu.addEventListener('click', () => neuLaden(cacheObjekt(), () => { location.reload(); }));
+  const klingelTest = el('klingel-test');
+  if (klingelTest) klingelTest.addEventListener('click', () => { location.href = 'index.html?klingel=1'; });
 }
 
 starten();
