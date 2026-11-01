@@ -52,7 +52,7 @@
   }
   #hinweis-text { display: block; margin-top: 8px; font-size: 28px; font-weight: 500; line-height: 1.2; }
   #hear-hint {
-    position: fixed; z-index: 4; left: 0; right: 0; bottom: 16px;
+    position: fixed; z-index: 4; left: 12%; right: 12%; bottom: 16px;
     margin: 0; text-align: center; pointer-events: none;
     color: rgba(244, 239, 232, .38); font-size: 13px;
   }
@@ -60,10 +60,16 @@
     position: fixed; z-index: 6; top: 0; left: 0; width: 88px; height: 88px;
     margin: 0; padding: 0; border: 0; background: transparent; color: transparent;
   }
+  #klingel {
+    position: fixed; z-index: 3; display: block; margin: 0; padding: 0; border: 0;
+    background: transparent; object-fit: cover; border-radius: 16px;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
 <canvas id="c" aria-label="Animated eyes"></canvas>
+<img id="klingel" alt="" aria-hidden="true" style="opacity:0;width:0;height:0">
 <div id="dim" aria-hidden="true"></div>
 <p id="uhr" hidden></p>
 <p id="caption" hidden></p>

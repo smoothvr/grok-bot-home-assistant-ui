@@ -124,9 +124,7 @@ export class Buehne {
     this.cv.width = W;
     this.cv.height = H;
     if (this.mode === '2d') {
-      const side = Math.max(1, Math.min(W, H));
-      this.szene2d = new Szene2D(side, side, { cheap: !!this.sparsam, cube: true });
-      this.cubeFrame = document.createElement('canvas');
+      this.szene2d = new Szene2D(W, H, { cheap: !!this.sparsam, flat: true });
     } else if (this.mode === 'vollbild') {
       this.szene2d = new Szene2D(W, H, { cheap: true, bold: true });
     }
@@ -147,6 +145,14 @@ export class Buehne {
     if (o.zustand) this.lichtZustand = o.zustand;
     if ('rgb' in o) this.lichtRgb = o.rgb && o.rgb.length ? o.rgb : null;
     if ('alarmStark' in o) this.alarmStark = o.alarmStark !== false;
+    if ('huelle' in o) {
+      const n = Number(o.huelle);
+      this.lichtHuelle = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+    }
+    if ('override' in o) {
+      const n = Number(o.override);
+      this.lichtOverride = Number.isFinite(n) ? n : null;
+    } else this.lichtOverride = null;
   }
 
   // Screen-edge light under the eyes. Bold only flashes it while a tap is acknowledged.
@@ -177,6 +183,8 @@ export class Buehne {
     const st = name || 'idle';
     if (this.lichtProfil === 'lebhaft') lebhaftSet(this.lichtMaschine, st, now, rgb);
     else ruhigSet(this.lichtMaschine, st, now, rgb);
+    this.lichtMaschine.huelle = this.lichtHuelle > 0 ? this.lichtHuelle : 0;
+    this.lichtMaschine.override = typeof this.lichtOverride === 'number' ? this.lichtOverride : null;
     const frameFn = this.lichtProfil === 'lebhaft' ? lebhaftFrame : ruhigFrame;
     frameFn(this.lichtCtx, this.lichtFeld, this.lichtMaschine, now, this.lichtT);
     const ctx = this.ctx;
@@ -194,7 +202,7 @@ export class Buehne {
     ctx.save();
     try {
       if (this.mode === 'led') this.drawLed(pose, ring);
-      else if (this.mode === '2d') this.drawCube(pose, ring);
+      else if (this.mode === '2d') this.drawFlach(pose, ring);
       else if (this.mode === 'vollbild') {
         // Bold hides the living edge. The red rim is only while the state is angry, not from a leftover ring flag.
         this.szene2d.render(ctx, pose, [ring[0], 0, null], this.previewPx());
@@ -286,7 +294,8 @@ export class Buehne {
     ctx.restore();
   }
 
-  drawCube(pose, ring) {
+  // Eyes on a black screen. The only colour is the screen-edge glow, drawn afterwards.
+  drawFlach(pose, ring) {
     const ctx = this.ctx;
     const W = this.cv.width, H = this.cv.height;
     ctx.save();
@@ -294,18 +303,8 @@ export class Buehne {
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
-    const box = this.previewPx();
-    if (!box) {
-      const side = this.szene2d.W;
-      const frame = this.cubeFrame;
-      if (frame.width !== side || frame.height !== side) {
-        frame.width = side;
-        frame.height = side;
-      }
-      this.szene2d.render(frame.getContext('2d'), pose, [ring[0], 0, null], null, false);
-      ctx.drawImage(frame, (W - side) / 2, (H - side) / 2);
-    } else this.szene2d.render(ctx, pose, [ring[0], 0, null], box, true);
     ctx.restore();
+    this.szene2d.render(ctx, pose, [ring[0], 0, null], this.previewPx(), true);
     const farbe = this.lichtRgb || (this.lichtZustand === 'schlafen' ? null : (ring && ring[0]));
     this.zeichneLicht(this.lichtZustand, farbe);
   }

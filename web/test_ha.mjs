@@ -280,10 +280,11 @@ assert(JSON.parse(altSpeicher.getItem('eye_ui_config')).v === 4, 'a migrated sav
     },
   }));
   const geborgt = ladeKonfig('', nurTelefon, { haToken: 'aus-datei', haUrl: 'http://file.local:8123' });
-  assert(geborgt.haToken === 'vom-telefon' && geborgt.haUrl.includes('file.local'), 'a stored token wins over the file');
+  assert(geborgt.haToken === 'aus-datei' && geborgt.haUrl.includes('file.local'), 'a file token wins over a stored token');
   assert(JSON.parse(nurTelefon.getItem('eye_ui_config')).profiles.phone.haToken === 'vom-telefon', 'the other profile keeps its token');
+  speichereKonfig({ ...geborgt, haToken: 'bleibt-auf-dem-geraet' }, nurTelefon);
   speichereKonfig({ ...geborgt, haToken: '' }, nurTelefon);
-  assert(JSON.parse(nurTelefon.getItem('eye_ui_config')).profiles.tablet.haToken === 'vom-telefon', 'an empty save does not wipe a token');
+  assert(JSON.parse(nurTelefon.getItem('eye_ui_config')).profiles.tablet.haToken === 'bleibt-auf-dem-geraet', 'an empty save does not wipe a token');
   speichereKonfig({ ...geborgt, haToken: '' }, nurTelefon, { tokenLoeschen: true });
   assert(JSON.parse(nurTelefon.getItem('eye_ui_config')).profiles.tablet.haToken === '', 'forgetting the token clears it');
   const flach = mem();

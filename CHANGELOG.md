@@ -4,6 +4,86 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2026-11-01
+
+### Changed
+
+- Settings only shows sleep, dimming, language, volume, liveliness, the clock, and the demo. Reactions stay in the collapsed list. Anything `config.local.json` already sets is left off the page, including the central-setting notes.
+- Save returns to the face. Close leaves without saving. The reload and back buttons are gone. A new version still arrives through the application cache and through `input_button.eye_ui_reload`.
+- The controls are drawn for the iPad: large stepped choices, a volume slider in steps of 20 percent, and no system dropdowns or checkboxes. The clock still defaults to off. Volume still defaults to 160 percent.
+
+## [2.2.5] - 2026-11-01
+
+### Added
+
+- Doorbell view. A rising edge on `binary_sensor.klingel_haustuer` wakes the face, plays a curious phrase, and tints the edge porch gold. When the courtyard camera has a picture, the eyes ease into the bottom-right corner and the image sits large in the upper left. The view holds for 90 seconds, longer on each new ring. A tap on the small eyes, or anywhere outside the picture, returns to the face. The first state after connect is ignored.
+- The picture uses `camera.hofkamera` and that entity's `access_token`. The stream is tried first. If it does not show a frame, the page falls back to a snapshot once a second. No camera, no token, or a failed picture leaves the eyes full size. There is no empty frame.
+- The public demo loop shows the same layout with a bundled abstract courtyard. Settings has a quiet Klingel testen control for that picture. `camera.gartenkamera` can be named in `doorbellCamera` later. Nothing else listens for a garden bell.
+
+## [2.2.4] - 2026-11-01
+
+### Added
+
+- The page picks up a new version without closing Safari. A ready application cache is swapped and the page reloads. The cache is checked about every 30 minutes and when the iPad wakes. `input_button.eye_ui_reload` does the same over the existing socket. Settings has Neu laden.
+- Volume runs from 0 to 200 percent. `config.local.json` accepts `volume` and `reloadEntity`.
+
+### Changed
+
+- Sound is louder. One master gain feeds a compressor, and each droid phrase is leveled to a similar peak. The default is 160 percent. The glow still follows the phrase, not the volume knob.
+- A key in `config.local.json` wins over the value stored on the device. The device value is used only when the file omits that key. Settings shows those fields as centrally set. The public demo still ignores the address and the token. A URL parameter still wins for one visit.
+
+## [2.2.3] - 2026-11-01
+
+### Fixed
+
+- Each reaction tints the edge in its own colour. The showcase had been leaving the light on idle, so the glow never changed mood. Red is only grumpy, and the alarm while angry.
+- The voice envelope sets the level inside that colour's quiet-profile range, so a soft beep and a louder phrase read differently. After the phrase, colour and level ease back to idle over about 2.6 seconds.
+
+## [2.2.2] - 2026-10-31
+
+### Changed
+
+- The sleeping start is only the eyes and the edge glow. The demo and introduction lines are gone.
+- The first tap wakes the face, unlocks sound, and plays each of the 14 reactions once. After that it keeps looping, with a little more air between steps. A tap during the loop still pokes, grumbles, or settles, and the loop continues.
+- The one-time settings sentence is gone. Five taps, or a two-second hold in the top corner, still open settings.
+
+## [2.2.1] - 2026-10-31
+
+### Fixed
+
+- The edge light follows the approved quiet field again. 2.2 had been scaling the finished glow down after it was drawn, so idle sat far below the profile. Quiet is the standard. Lively stays selectable. Sleep uses the profile's own levels. There is no extra dimmer and no grain.
+- A droid phrase, including listening, speaking, and music, moves the level inside that state's low-to-high range and eases there over 0.12 seconds. The slow side-to-side drift is unchanged. Red is the alarm while angry, and the error colour while something failed.
+
+## [2.2.0] - 2026-10-31
+
+### Changed
+
+- One look: the eyes sit full-screen on black. The square frame and the cube styling are gone. The only light is the soft glow along the screen edge.
+- That glow stays quiet. Idle is a very slow, low breath. A small chirp lifts it a little, a louder phrase lifts it more, then it settles. Red is still only for angry.
+- Idle glances are a bit rarer. Liveliness still turns them up.
+- A public demo, and any fresh open with no Home Assistant address or token, starts asleep. Two lines offer the demo and a short introduction. A tap during either one returns to sleep. A configured install still starts in the normal face. Both are linked from settings.
+- `?demo=1` still runs the longer tour and holds music for 30 seconds.
+
+### Added
+
+- The introduction is a few short lines, in German or English, over the open eyes. It describes the direction. It does not claim that voice or asking Grok already works.
+- Settings can be opened with a two-second hold in the top corner, or with five quick taps. After the second touch, one faint line says so, once.
+
+## [2.1.0] - 2026-10-31
+
+### Added
+
+- Idle gaze with saccades, side and upward glances, a slow drift, and a slight head tilt in the eye shape. Blinks vary: single, double, a slow sleepy blink, and a half blink. A touch makes the eyes look that way for a moment, and they sometimes glance back.
+- Reactions with two to four renditions each, chosen at random and never repeated immediately: surprised, curious, shy, pleased, thinking, confused, a nod, sad (“no”), a happy bounce, relieved, sleepy, startled, grumpy, and content. A few quick pokes turn grumpy. A long press settles into content.
+- A procedural droid voice (Web Audio oscillators, no samples): a happy trill, a rising question, a sad descending boop, a thinking burble, a startled squeak, a sleepy yawn, and yes or no beeps. Pitch, tempo, and syllable count shift a little each time. Phrases stay short, quiet, and on a cooldown. The four presence-wake hums stay.
+- The edge light pulses with those beeps. It turns red only while angry.
+- Settings: a Liveliness slider (`Lebendigkeit`) and a volume slider. A collapsed Reactions list plays each reaction. `settings.html?preview=1` opens that list. `?reaction=curious&demo=0` plays one on the face. `?live=` and `?vol=` set the sliders for one visit.
+
+### Changed
+
+- Demo mode still ends on music for 30 seconds. Between the emotions it now shows the new reactions.
+- Sleep plays a short yawn with the existing sleep tone ducked under it. Closing the door plays a relieved reaction. A reminder and its acknowledgement, a presence wake, and a calm error each pick a fitting reaction.
+
 ## [2.0.0] - 2026-10-31
 
 ### Changed

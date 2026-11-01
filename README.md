@@ -20,7 +20,7 @@ npm start
 
 Open <http://localhost:8000/>. On a Home Assistant box the page is served at `/local/eye-ui/index.html`. A folder URL returns 403, so open `index.html` itself. Asset URLs are relative, so the same files work under `/local/eye-ui/`.
 
-Home Assistant caches `/local/` for 31 days. `index.html` points at `eye-ui.appcache`. `npm run appcache` writes a `# version` line from `VERSION`. Hosts should still send `Cache-Control: no-cache` for `sw.js` and `index.html`.
+Home Assistant caches `/local/` for 31 days. `index.html` points at `eye-ui.appcache`. `npm run appcache` writes a `# version` line from `VERSION`. When that cache is ready the page swaps it and reloads, including after a check about every 30 minutes and when the iPad wakes. Hosts should still send `Cache-Control: no-cache` for `sw.js` and `index.html`.
 
 A public demo is live at <https://grok-bot-ui.herrvonundzu.eu>. It starts in demo mode. On that host no token is ever stored.
 
@@ -43,25 +43,34 @@ Useful query parameters:
 | `?clock=1` | Show the 24-hour clock. It is off unless you turn it on. |
 | `?lang=de` or `?lang=en` | Language for this visit. |
 | `?sleep=20` | Sleep after 20 seconds. In the URL the value is seconds. In settings it is minutes. |
-| `?demo=1` | Loop the emotions, end on music for 30 seconds, then start again. `?demo=0` keeps a public page idle so it can be set up. |
+| `?demo=1` | Longer tour. It ends on music for 30 seconds, then starts again. `?demo=0` skips that tour. |
+| `?lauf=1` | Play every reaction once, then keep looping. |
+| `?welcome=0` | Skip the sleeping start. |
 | `?door=binary_sensor.front_door` | Hold angry while this contact is open, and relax when it closes. |
 | `?presence=binary_sensor.living_room_presence` | Wake from sleep when this sensor turns on. |
 | `?alarm=strong` or `?alarm=normal` | Alarm intensity. `?alarm_intensity=` accepts the same words. Strong is the default. |
+| `?live=0.7` or `?vol=1.6` | Liveliness and sound volume for this visit. Volume runs from 0 to 200 percent (`0.5` is half, `160` and `1.6` are 160 percent, `2` is 200 percent). |
 | `?ha=mock&sequence=listening,done` | Play states without a server. |
 
 Phone and tablet keep separate saved profiles in the same browser.
 
 ## The face
 
-One look. Soft eyes, and a living edge light on every state except angry. Angry replaces that light with red for as long as the state holds. The front door does the same while its contact is open.
+One look. The eyes are flat and full-screen on black. There is no square, no cube, and no frame around them. The edge light is the approved quiet profile: a soft glow along the bottom, breathing slowly between its low and high level. A phrase lifts that level with the sound, inside the same range, then it settles. Thinking and music let the glow rise up the sides. Lively, the moving wave, stays available. Red is the alarm while angry, and the error colour when something fails. The front door holds the alarm while its contact is open.
 
 Sleep is in minutes. `0` keeps the eyes awake. After `dimAfter` seconds of quiet the page dims (30 percent unless you change it). While the eyes are asleep the screen stays dim. A tap wakes them. Presence can wake them only from sleep, and only again after the next sleep.
 
+While idle the eyes saccade, glance to the sides and up, drift slowly, and tilt a little. Blinks come as a single, a double, a slow sleepy blink, or a half blink. A touch draws a look. A few quick pokes turn the face grumpy. A long press, about 0.7 seconds and not in the settings corner, makes it content. Each reaction has a few renditions and does not repeat the same one immediately.
+
+The droid chatter is generated in the browser: short beeps and chirps, a little different every time, with a cooldown so a hallway does not get a stream of noise. The four wake hums are unchanged. The edge light follows those phrases inside the current colour's approved range.
+
+Settings shows sleep, dimming, language, volume, liveliness, the clock, and the demo. The clock is off unless you turn it on. Volume runs from 0 to 200 percent in steps of 20, and the default is 160 percent. Liveliness is a few named steps. `0` keeps the gaze rare and skips casual tap reactions. A field that `config.local.json` already sets is left off the page. The collapsed Reactions list plays each reaction (`settings.html?preview=1` opens it). `?live=` and `?vol=` override the values for one visit. A new version still arrives through the application cache and through `input_button.eye_ui_reload`.
+
 `speaking` on `input_select.eye_ui_state` lights the speaking colour while the eyes stay idle. `wake` on that same entity is the presence wake, not a separate clip.
 
-Demo mode loops the emotions and ends on music for 30 seconds, then starts again until a tap. It shows a stand-in reminder. It does not change a saved token.
+A public demo, and a fresh page with no Home Assistant address or token, opens asleep. There is nothing else on the screen. The first tap wakes the eyes, unlocks sound, and plays every reaction once, then keeps looping. A tap during the loop still gets the usual answer, and the loop continues. On a configured install the face starts as usual. `?demo=1` runs the longer tour and holds music for 30 seconds. `?lauf=1` is the reaction showcase.
 
-Hold the top-left corner for about 2 seconds to open settings. There is no gear and no sheet.
+Hold the top-left corner for about 2 seconds to open settings, or tap the face five times. There is no gear and no sheet.
 
 ## Home Assistant
 
@@ -74,6 +83,10 @@ Suggested helpers:
 - `script.eye_hinweis_quittieren` to clear that text
 - `binary_sensor.front_door` for the angry hold
 - `binary_sensor.living_room_presence` for the wake
+- `input_button.eye_ui_reload` to reload the page when its last-pressed time changes. The first value after connect is ignored. A missing helper does nothing. `reloadEntity` in `config.local.json` can name another button.
+- `binary_sensor.klingel_haustuer` for the doorbell. Each off-to-on edge is one ring. The first state after connect is ignored. `doorbellEntity` can name another sensor.
+- `camera.hofkamera` for the doorbell picture (`doorbellCamera`). The page reads `access_token` from that camera and opens `/api/camera_proxy_stream/<entity>?token=...`, then a snapshot once a second if the stream does not show a frame. The Home Assistant address is the host in `haUrl`. A missing camera or a failed picture leaves the eyes full size, with no empty frame. `camera.gartenkamera` can be put in `doorbellCamera` later. Nothing else listens for a garden bell.
+- `doorbellHoldSeconds` keeps that view open. The default is 90. Another ring extends it. A tap outside the picture closes it.
 
 `option: angry` still works from an automation. `input_boolean.eye_guard` can set that option while a guard is on. The page itself holds angry for as long as the door entity is open, and returns to idle when the door closes.
 
@@ -81,7 +94,7 @@ The socket sends `ping` every 30 seconds and reconnects if `pong` does not arriv
 
 ### Security
 
-On your own device the token stays only in that browser's localStorage. It is never put in a URL or sent anywhere except your Home Assistant. `config.local.json` can fill an empty token. That file is readable by anyone on the LAN, so use a non-admin, local-only Home Assistant user. On the public demo host no token is ever stored.
+On your own device the token stays only in that browser's localStorage. It is never put in a URL or sent anywhere except your Home Assistant. Every key present in `config.local.json` wins over the value stored on the iPad. A stored value is used only for a key the file does not contain. Settings shows those fields as centrally set, so a change there is not saved over the file. `volume` is a percent from 0 to 200. `reloadEntity` defaults to `input_button.eye_ui_reload`. `doorbellEntity`, `doorbellCamera`, and `doorbellHoldSeconds` set the doorbell. `presenceEntity`, `reminderEntity`, and `reminderAckScript` still work. See `web/config.example.json`. A URL parameter still wins for one visit. The file is readable by anyone on the LAN, so use a non-admin, local-only Home Assistant user. On the public demo host the address and the token from that file are ignored, and no token is ever stored.
 
 ## License
 

@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2.0.0
+# version 2.2.6
 
 CACHE:
 index.html
@@ -7,6 +7,7 @@ settings.html
 manifest.webmanifest
 app.js
 settings.js
+einstell.js
 settings-legacy.js
 legacy.js
 engine.js
@@ -40,6 +41,13 @@ dimmen.js
 siteconfig.js
 wache.js
 hinweis.js
+empfang.js
+blick.js
+wahl.js
+reaktionen.js
+stimme.js
+laden.js
+klingel.js
 sw.js
 onsets.json
 config.example.json
@@ -49,6 +57,7 @@ icons/icon-192.png
 icons/icon-512.png
 icons/icon-maskable-512.png
 assets/brand/hvuz-logo.jpg
+assets/klingel-test.png
 assets/brand/NOTICE.md
 sounds/01_hallo.wav
 sounds/02_zuhoeren.wav

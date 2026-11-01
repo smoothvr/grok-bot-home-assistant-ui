@@ -88,7 +88,7 @@ export function createDemoMusic() {
     return job.then((ready) => { buf = ready; return buf; });
   }
 
-  async function start(context) {
+  async function start(context, dest) {
     if (!context) return false;
     await ensure(context);
     if (playing) return true;
@@ -97,7 +97,7 @@ export function createDemoMusic() {
     const now = ac.currentTime;
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(0.8, now + 1.35);
-    gain.connect(ac.destination);
+    gain.connect(dest || ac.destination);
     src = ac.createBufferSource();
     src.buffer = buf;
     src.loop = true;

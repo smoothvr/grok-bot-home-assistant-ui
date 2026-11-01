@@ -21,6 +21,26 @@
     return a;
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __async = (__this, __arguments, generator) => {
+    return new Promise((resolve, reject) => {
+      var fulfilled = (value) => {
+        try {
+          step(generator.next(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var rejected = (value) => {
+        try {
+          step(generator.throw(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+      step((generator = generator.apply(__this, __arguments)).next());
+    });
+  };
 
   // web/polyfills.js
   if (typeof Object.fromEntries !== "function") {
@@ -317,6 +337,11 @@
   // web/gesten.js
   var ECK = 128;
 
+  // web/klingel.js
+  var KLINGEL_ENTITY = "binary_sensor.klingel_haustuer";
+  var KLINGEL_KAMERA = "camera.hofkamera";
+  var KLINGEL_HOLD_S = 90;
+
   // web/strings.js
   var UI = {
     en: {
@@ -324,6 +349,17 @@
       "app.shortTitle": "Grok Bot",
       "app.canvas": "Animated eyes",
       "settings.title": "Settings",
+      "settings.sleep": "Sleep",
+      "settings.dim": "Dim",
+      "settings.dimAfter": "After",
+      "settings.dimLevel": "Level",
+      "settings.never": "Never",
+      "settings.link": "Connection",
+      "live.still": "Still",
+      "live.ruhig": "Quiet",
+      "live.normal": "Normal",
+      "live.munter": "Lively",
+      "live.wach": "Awake",
       "settings.intro": "Hold the top-left corner to open settings. The token stays in this browser.",
       "settings.profilePhone": "Phone",
       "settings.profileTablet": "Tablet",
@@ -370,6 +406,8 @@
       "hint.hear": "tap me to hear me",
       "hint.forget": "Don't forget",
       "hint.demo": "Paper bin",
+      "preview.summary": "Reactions",
+      "preview.help": "A quiet list for trying each reaction. The first tap on the face unlocks the sound.",
       "cmd.help": "A script entity, or a service and a target, such as script.eye_music_on or light.turn_on/light.living_room.",
       "cmd.musicOn": "Music on",
       "cmd.musicOff": "Music off",
@@ -379,6 +417,8 @@
       "display.mode": "View",
       "display.sleep": "Sleep after minutes (0 = never)",
       "display.sound": "Sound",
+      "display.volume": "Volume",
+      "display.liveliness": "Liveliness",
       "display.stateName": "State name",
       "display.caption": "Status line",
       "display.captionHelp": "A short line under the eyes. Tap it for details. When it is off, a faint mark at the bottom brings it back.",
@@ -524,6 +564,8 @@
       "err.url": "Use a ws://, wss://, http://, or https:// address for Home Assistant.",
       "err.entity": "Write the entity as domain.object, for example input_select.eye_ui_state.",
       "action.save": "Save",
+      "action.reload": "Reload",
+      "doorbell.test": "Test the doorbell",
       "action.close": "Close",
       "action.tour": "Play all states",
       "action.fullscreen": "Fullscreen",
@@ -632,6 +674,17 @@
       "app.shortTitle": "Grok Bot",
       "app.canvas": "Animierte Augen",
       "settings.title": "Einstellungen",
+      "settings.sleep": "Schlafen",
+      "settings.dim": "Abdunkeln",
+      "settings.dimAfter": "Nach",
+      "settings.dimLevel": "Stufe",
+      "settings.never": "Nie",
+      "settings.link": "Verbindung",
+      "live.still": "Still",
+      "live.ruhig": "Ruhig",
+      "live.normal": "Normal",
+      "live.munter": "Munter",
+      "live.wach": "Wach",
       "settings.intro": "Oben links halten \xF6ffnet die Einstellungen. Der Token bleibt in diesem Browser.",
       "settings.profilePhone": "Telefon",
       "settings.profileTablet": "Tablet",
@@ -678,6 +731,8 @@
       "hint.hear": "tipp mich an, dann h\xF6rst du mich",
       "hint.forget": "Nicht vergessen",
       "hint.demo": "Papiertonne",
+      "preview.summary": "Reaktionen",
+      "preview.help": "Eine stille Liste, um jede Reaktion zu pr\xFCfen. Der erste Tipp auf das Gesicht schaltet den Ton frei.",
       "cmd.help": "Eine Skript-Entity oder ein Dienst mit Ziel, zum Beispiel script.eye_music_on oder light.turn_on/light.living_room.",
       "cmd.musicOn": "Musik an",
       "cmd.musicOff": "Musik aus",
@@ -687,6 +742,8 @@
       "display.mode": "Ansicht",
       "display.sleep": "Einschlafen nach Minuten (0 = nie)",
       "display.sound": "Ton",
+      "display.volume": "Lautst\xE4rke",
+      "display.liveliness": "Lebendigkeit",
       "display.stateName": "Zustandsname",
       "display.caption": "Statuszeile",
       "display.captionHelp": "Eine kurze Zeile unter den Augen. Tippen \xF6ffnet die Details. Ist sie aus, holt eine schwache Markierung unten sie zur\xFCck.",
@@ -831,6 +888,8 @@
       "err.url": "Die Adresse muss ws://, wss://, http:// oder https:// von Home Assistant sein.",
       "err.entity": "Die Entity als domain.objekt schreiben, zum Beispiel input_select.eye_ui_state.",
       "action.save": "Speichern",
+      "action.reload": "Neu laden",
+      "doorbell.test": "Klingel testen",
       "action.close": "Schlie\xDFen",
       "action.tour": "Alle Zust\xE4nde",
       "action.fullscreen": "Vollbild",
@@ -1011,6 +1070,12 @@
     reminderAckScript: "script.eye_hinweis_quittieren",
     kamera: "",
     ton: true,
+    lebendigkeit: 0.42,
+    lautstaerke: 1.6,
+    reloadEntity: "input_button.eye_ui_reload",
+    doorbellEntity: KLINGEL_ENTITY,
+    doorbellCamera: KLINGEL_KAMERA,
+    doorbellHoldSeconds: KLINGEL_HOLD_S,
     label: false,
     caption: true,
     uhr: false,
@@ -1022,7 +1087,7 @@
     ecken: normEcken(ECKEN_VORGABE),
     gestenStand: 2,
     eckGroesse: ECK,
-    lichtProfil: "lebhaft",
+    lichtProfil: "ruhig",
     alarmStaerke: "stark",
     dash: normDash(null),
     eigene: [],
@@ -1101,6 +1166,16 @@
     delete src.reminder_ack;
     if (src.camera && !src.kamera) src.kamera = src.camera;
     delete src.camera;
+    if (src.doorbell_entity && !src.doorbellEntity) src.doorbellEntity = src.doorbell_entity;
+    if (src.doorbell && !src.doorbellEntity) src.doorbellEntity = src.doorbell;
+    delete src.doorbell_entity;
+    delete src.doorbell;
+    if (src.doorbell_camera && !src.doorbellCamera) src.doorbellCamera = src.doorbell_camera;
+    delete src.doorbell_camera;
+    if (src.doorbell_hold != null && src.doorbellHoldSeconds == null) src.doorbellHoldSeconds = src.doorbell_hold;
+    if (src.doorbellHold != null && src.doorbellHoldSeconds == null) src.doorbellHoldSeconds = src.doorbellHold;
+    delete src.doorbell_hold;
+    delete src.doorbellHold;
     if (src.dimAfter != null && src.dimNachSekunden == null) src.dimNachSekunden = src.dimAfter;
     delete src.dimAfter;
     if (src.dimLevel != null && src.dimStufe == null) src.dimStufe = src.dimLevel;
@@ -1115,6 +1190,10 @@
     delete src.dashboard;
     if (src.licht_profil && !src.lichtProfil) src.lichtProfil = src.licht_profil;
     delete src.licht_profil;
+    if (src.volume != null && src.lautstaerke == null) src.lautstaerke = src.volume;
+    delete src.volume;
+    if (src.reload_entity && !src.reloadEntity) src.reloadEntity = src.reload_entity;
+    delete src.reload_entity;
     if (src.alarm && !src.alarmStaerke) src.alarmStaerke = src.alarm;
     delete src.alarm;
     if (src.haUrl) {
@@ -1139,6 +1218,18 @@
     } catch (e) {
       return null;
     }
+  }
+  function einheit(v, fallback) {
+    let n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n > 1) n /= 100;
+    return Math.max(0, Math.min(1, n));
+  }
+  function lautVon(v, fallback) {
+    let n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n > 2) n /= 100;
+    return Math.max(0, Math.min(2, n));
   }
   function nurBekannte(obj) {
     const out = {};
@@ -1168,11 +1259,29 @@
       const id = String(out.reminderAckScript || "").trim().toLowerCase();
       out.reminderAckScript = id && dienstAus(id) ? id : "";
     }
+    if ("reloadEntity" in out) {
+      const id = String(out.reloadEntity || "").trim().toLowerCase();
+      out.reloadEntity = id && gueltigeEntity(id) ? id : "";
+    }
+    if ("doorbellEntity" in out) {
+      const id = String(out.doorbellEntity || "").trim().toLowerCase();
+      out.doorbellEntity = id && gueltigeEntity(id) ? id : "";
+    }
+    if ("doorbellCamera" in out) {
+      const id = String(out.doorbellCamera || "").trim().toLowerCase();
+      out.doorbellCamera = id && gueltigeEntity(id) ? id : "";
+    }
+    if ("doorbellHoldSeconds" in out) {
+      const n = Math.round(Number(out.doorbellHoldSeconds));
+      out.doorbellHoldSeconds = n >= 5 && n <= 600 ? n : KLINGEL_HOLD_S;
+    }
     if ("kamera" in out) {
       const id = String(out.kamera || "").trim().toLowerCase();
       out.kamera = id && gueltigeEntity(id) ? id : "";
     }
     if ("ton" in out) out.ton = !!out.ton;
+    if ("lebendigkeit" in out) out.lebendigkeit = einheit(out.lebendigkeit, 0.42);
+    if ("lautstaerke" in out) out.lautstaerke = lautVon(out.lautstaerke, 1.6);
     if ("label" in out) out.label = !!out.label;
     if ("caption" in out) out.caption = !!out.caption;
     if ("uhr" in out) out.uhr = !!out.uhr;
@@ -1252,7 +1361,7 @@
   function speichereKonfig(konfig2, storage, opt) {
     const s = speicher(storage);
     if (!s) return;
-    const tokenLoeschen = !!(opt && opt.tokenLoeschen);
+    const tokenLoeschen2 = !!(opt && opt.tokenLoeschen);
     const paket = lesePaket(s);
     const profiles = {
       phone: paket.neu ? __spreadValues({}, paket.phone) : {},
@@ -1260,11 +1369,11 @@
     };
     const bekannt = nurBekannte(konfig2);
     const gespeichertToken = tokenVon(profiles[klasse]);
-    if (tokenLoeschen) bekannt.haToken = "";
+    if (tokenLoeschen2) bekannt.haToken = "";
     else if (!String(bekannt.haToken || "").trim() && gespeichertToken) bekannt.haToken = gespeichertToken;
     profiles[klasse] = bekannt;
     try {
-      schreibePaket(s, profiles, { tokenLoeschen });
+      schreibePaket(s, profiles, { tokenLoeschen: tokenLoeschen2 });
     } catch (e) {
     }
   }
@@ -1286,11 +1395,11 @@
     if (demoHost) delete ausDatei.haUrl;
     const stand = Number(gespeichert.gestenStand) || 0;
     const migriereGesten = stand < 2 && istAltesLayout(gespeichert.gesten, gespeichert.ecken);
-    const k = __spreadValues(__spreadValues(__spreadValues({}, VORGABE), ausDatei), nurBekannte(gespeichert));
-    if (!demoHost && ausDatei.haUrl) k.haUrl = ausDatei.haUrl;
+    const k = __spreadValues(__spreadValues(__spreadValues({}, VORGABE), nurBekannte(gespeichert)), ausDatei);
+    if (dateiToken) k.haToken = dateiToken;
     if (migriereGesten) {
-      k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
-      k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
+      if (!("gesten" in ausDatei)) k.gesten = normGesten(GESTEN_VORGABE, k.eigene);
+      if (!("ecken" in ausDatei)) k.ecken = normEcken(ECKEN_VORGABE, k.eigene);
       k.gestenStand = 2;
       migrated = true;
     }
@@ -1305,17 +1414,20 @@
     k.lockSalt = k.lockOn ? String(k.lockSalt) : "";
     k.lockHash = k.lockOn ? String(k.lockHash) : "";
     k.mediaEntity = gueltigeEntity(k.mediaEntity) ? String(k.mediaEntity).trim().toLowerCase() : "";
-    if (!String(k.haToken || "").trim()) {
+    const gespeichertToken = String(tokenVon(gespeichert) || "").trim();
+    if (dateiToken) {
+      k.haToken = dateiToken;
+      if (!gespeichertToken) migrated = true;
+    } else if (!String(k.haToken || "").trim()) {
       const geliehen = tokenVon(paket.phone) || tokenVon(paket.tablet) || tokenVon(paket.flat) || tokenVon(paket.top) || String(lesen(s, ALT_TOKEN) || "").trim();
       if (geliehen) {
         k.haToken = geliehen;
         migrated = true;
-      } else if (dateiToken) {
-        k.haToken = dateiToken;
-        migrated = true;
       }
     }
-    if (!demoHost && ausDatei.haUrl && ausDatei.haUrl !== String(gespeichert.haUrl || "")) migrated = true;
+    const zentral = Object.keys(ausDatei);
+    if (dateiToken) zentral.push("haToken");
+    k.zentral = zentral;
     if (migrated) speichereKonfig(k, s);
     const p = params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
     if (p.get("lock") === "reset") speichereKonfig(__spreadProps(__spreadValues({}, k), { lockOn: false, lockSalt: "", lockHash: "" }), s);
@@ -1348,6 +1460,10 @@
     if (p.get("label") === "1") n.label = true;
     if (p.get("ton") === "0") n.ton = false;
     if (p.get("ton") === "1") n.ton = true;
+    const live = p.get("live") || p.get("liveliness") || p.get("lebendigkeit");
+    if (live != null && live !== "" && !Number.isNaN(+live)) n.lebendigkeit = einheit(live, n.lebendigkeit);
+    const vol = p.get("vol") || p.get("volume");
+    if (vol != null && vol !== "" && !Number.isNaN(+vol)) n.lautstaerke = lautVon(vol, n.lautstaerke);
     const modus = normModus(p.get("mode") || p.get("modus") || p.get("theme"));
     if (modus) n.modus = modus;
     const licht = String(p.get("licht_profil") || p.get("light") || "").trim().toLowerCase();
@@ -1390,8 +1506,341 @@
     return n;
   }
 
+  // web/siteconfig.js
+  function ladeSiteConfig(timeoutMs = 2500) {
+    return new Promise((resolve) => {
+      let fertig = false;
+      const ende = (wert) => {
+        if (fertig) return;
+        fertig = true;
+        resolve(wert && typeof wert === "object" ? wert : null);
+      };
+      const timer = setTimeout(() => ende(null), timeoutMs);
+      const ausText = (text, status) => {
+        clearTimeout(timer);
+        if (status !== 200 || !text) {
+          ende(null);
+          return;
+        }
+        try {
+          ende(JSON.parse(text));
+        } catch (e) {
+          ende(null);
+        }
+      };
+      const xhr = () => {
+        try {
+          const req = new XMLHttpRequest();
+          req.open("GET", "config.local.json", true);
+          req.onload = () => ausText(req.status === 200 ? req.responseText : "", req.status);
+          req.onerror = () => {
+            clearTimeout(timer);
+            ende(null);
+          };
+          req.send();
+        } catch (e) {
+          clearTimeout(timer);
+          ende(null);
+        }
+      };
+      if (typeof fetch === "function") {
+        try {
+          fetch("config.local.json", { cache: "no-store" }).then((res) => {
+            if (!res.ok) {
+              clearTimeout(timer);
+              ende(null);
+              return null;
+            }
+            return res.text();
+          }).then((text) => {
+            if (typeof text === "string") ausText(text, 200);
+          }).catch(() => xhr());
+        } catch (e) {
+          xhr();
+        }
+        return;
+      }
+      xhr();
+    });
+  }
+
   // web/version.js
-  var VERSION = "2.0.0";
+  var VERSION = "2.2.6";
+
+  // web/zustaende.js
+  var RING = {
+    schlafen: [58, 21, 0],
+    idle: [255, 106, 0],
+    hallo: [255, 176, 102],
+    zuhoeren: [0, 200, 255],
+    nachdenken: [138, 60, 255],
+    verstanden: [43, 255, 136],
+    erledigt: [43, 255, 136],
+    nicht_verstanden: [255, 160, 0],
+    fehler: [255, 26, 26],
+    lachen: [255, 90, 138],
+    musik: [255, 122, 0],
+    licht_an: [255, 230, 168],
+    licht_aus: [58, 21, 0]
+  };
+
+  // web/reaktionen.js
+  var REAKTION_IDS = [
+    "surprised",
+    "curious",
+    "shy",
+    "pleased",
+    "thinking",
+    "confused",
+    "nod",
+    "sad",
+    "happy",
+    "relieved",
+    "sleepy",
+    "startled",
+    "grumpy",
+    "content"
+  ];
+  var SATZ = {};
+  for (let i = 0; i < REAKTION_IDS.length; i++) SATZ[REAKTION_IDS[i]] = true;
+  var STIMMUNG = {
+    surprised: { licht: "sprechen", rgb: RING.hallo.slice() },
+    curious: { licht: "zuhoeren", rgb: RING.zuhoeren.slice() },
+    shy: { licht: "sprechen", rgb: [176, 150, 206] },
+    pleased: { licht: "bestaetigt", rgb: RING.verstanden.slice() },
+    thinking: { licht: "nachdenken", rgb: RING.nachdenken.slice() },
+    confused: { licht: "sprechen", rgb: [255, 170, 64] },
+    nod: { licht: "bestaetigt", rgb: [90, 220, 175] },
+    sad: { licht: "sprechen", rgb: [126, 158, 204] },
+    happy: { licht: "sprechen", rgb: RING.lachen.slice() },
+    relieved: { licht: "bestaetigt", rgb: [170, 245, 200] },
+    sleepy: { licht: "sprechen", rgb: RING.schlafen.slice() },
+    startled: { licht: "sprechen", rgb: [255, 214, 140] },
+    grumpy: { licht: "fehler", rgb: RING.fehler.slice() },
+    content: { licht: "sprechen", rgb: [255, 186, 120] }
+  };
+  function spur(dauer, werte) {
+    const n = werte.length;
+    const keys = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const t2 = n === 1 ? 0 : dauer * i / (n - 1);
+      keys[i] = [t2, werte[i], i === 0 ? "lin" : "io"];
+    }
+    return keys;
+  }
+  function baue(phrase, dur, n, fn) {
+    const liste2 = [];
+    for (let i = 0; i < n; i++) {
+      const dauer = dur * (0.92 + i * 0.05);
+      const roh = fn(i);
+      const rend = { phrase, dur: dauer, index: i };
+      for (const key in roh) {
+        if (Object.prototype.hasOwnProperty.call(roh, key)) rend[key] = spur(dauer, roh[key]);
+      }
+      liste2.push(rend);
+    }
+    return liste2;
+  }
+  function seite(i) {
+    if (i % 3 === 2) return 0;
+    return i % 2 === 0 ? -1 : 1;
+  }
+  var REAKTIONEN = {
+    surprised: baue("startle", 0.88, 4, (i) => {
+      const s = seite(i);
+      const hoch = i === 2 ? 0.34 : 0.1;
+      return {
+        scale: [1, 1.14, 1.04, 1],
+        sy: [1, 1.16, 1.05, 1],
+        sx: [1, 0.9, 0.97, 1],
+        sep: [1, 1.07, 1.03, 1],
+        gy: [0, hoch, hoch * 0.4, 0],
+        gx: [0, s * 0.2, s * 0.08, 0],
+        dy: [0, 0.035, 0, 0]
+      };
+    }),
+    curious: baue("curious", 1.4, 4, (i) => {
+      const s = i % 2 === 0 ? -1 : 1;
+      const seit = (i === 2 ? 0.16 : 0.52) * (i === 3 ? 1 : s);
+      const hoch = 0.4 + i % 3 * 0.1;
+      return {
+        gx: [0, seit, seit * 0.72, 0.04 * s],
+        gy: [0, hoch, hoch * 0.82, 0.08],
+        tilt: [0, -s * (5 + i), -s * 3.5, 0],
+        roll: [0, s * 2.4, s * 1.2, 0],
+        sy: [1, 1.06, 1.04, 1],
+        scale: [1, 1.03, 1.02, 1]
+      };
+    }),
+    shy: baue("shy", 1.28, 4, (i) => {
+      const s = i % 2 === 0 ? -1 : 1;
+      return {
+        gx: [0, s * (0.28 + i * 0.04), s * 0.36, s * 0.1],
+        gy: [0, -0.26, -0.34, -0.08],
+        sy: [1, 0.9, 0.84, 0.96],
+        happy: [0, 0.12, 0.32, 0.08],
+        tilt: [0, s * (4 + i), s * 5, 0],
+        scale: [1, 0.97, 0.95, 1]
+      };
+    }),
+    pleased: baue("happy", 1.15, 4, (i) => {
+      const s = seite(i);
+      return {
+        happy: [0, 0.4, 0.58 + i * 0.03, 0.16],
+        sx: [1, 1.06, 1.1, 1],
+        sy: [1, 0.94, 0.9, 1],
+        dy: [0, 0.015, 0.028, 0],
+        gx: [0, s * 0.1, 0, 0]
+      };
+    }),
+    thinking: baue("think", 1.55, 3, (i) => {
+      const s = i === 1 ? 1 : -1;
+      const seit = i === 2 ? 0.12 : 0.48;
+      return {
+        gx: [0, s * seit, s * seit * 0.85, s * 0.16],
+        gy: [0, 0.5, 0.62, 0.28],
+        scale: [1, 0.95, 0.94, 0.98],
+        lidT: [0, 0.05, 0.1, 0.04],
+        tilt: [0, -s * 4, -s * 5, -s]
+      };
+    }),
+    confused: baue("curious", 1.35, 3, (i) => {
+      const s = i === 1 ? -1 : 1;
+      return {
+        roll: [0, s * 7, -s * 5, s * 2, 0],
+        lidA: [0, 12 + i, 8, 0],
+        gy: [0, -0.1, 0.16, 0],
+        gx: [0, s * 0.22, -s * 0.14, 0],
+        scale: [1, 0.93, 0.97, 1],
+        sy: [1, 0.96, 1.02, 1]
+      };
+    }),
+    nod: baue("yes", 1.05, 3, (i) => {
+      const hop = 0.045 + i * 0.012;
+      const zweiter = i === 0 ? 0 : -hop * 0.7;
+      return {
+        dy: [0, -hop, 0.012, zweiter, 0],
+        scale: [1, 0.98, 1.02, 1, 1],
+        happy: [0, 0.05, i === 2 ? 0.28 : 0.08, 0]
+      };
+    }),
+    sad: baue("sad", 1.55, 3, (i) => {
+      const s = i === 2 ? -0.16 : i === 1 ? 0.14 : 0;
+      return {
+        gy: [0, -0.28, -0.4, -0.22],
+        gx: [0, s, s * 1.2, s * 0.4],
+        lidT: [0, 0.16, 0.28, 0.14],
+        sy: [1, 0.86, 0.76, 0.9],
+        bright: [1, 0.78, 0.66, 0.82],
+        scale: [1, 0.98, 0.96, 0.98]
+      };
+    }),
+    happy: baue("happy", 1.2, 4, (i) => {
+      const hop = 0.05 + i * 0.012;
+      const s = seite(i);
+      return {
+        dy: [0, hop, 0, i === 0 ? 0 : hop * 0.65, 0],
+        happy: [0, 0.7, 0.85, 0.45, 0.05],
+        sx: [1, 1.14, 1.18, 1.08, 1],
+        sy: [1, 0.82, 0.78, 0.9, 1],
+        gx: [0, s * 0.08, 0, 0]
+      };
+    }),
+    relieved: baue("relieved", 1.35, 3, (i) => ({
+      lidT: [0.2, 0.08, 0.02, 0],
+      happy: [0, 0.18 + i * 0.06, 0.46, 0.12],
+      dy: [0, -0.02, 0.03, 0],
+      scale: [0.96, 1.04, 1.02, 1],
+      sy: [0.88, 1.04, 1, 1],
+      gx: [0, (i - 1) * 0.12, 0, 0]
+    })),
+    sleepy: baue("sleepy", 1.9, 3, (i) => ({
+      lidT: [0, 0.1, 0.24 + i * 0.04, 0.38],
+      gy: [0, -0.08, -0.26, -0.34],
+      sy: [1, 0.9, 0.74, 0.62],
+      bright: [1, 0.82, 0.64, 0.5],
+      scale: [1, 0.99, 0.96, 0.94],
+      gx: [0, (i - 1) * 0.06, 0, 0]
+    })),
+    startled: baue("startle", 0.72, 4, (i) => {
+      const s = seite(i);
+      return {
+        scale: [1, 1.2, 1.06, 1],
+        sy: [1, 1.22, 1.08, 1],
+        sx: [1, 0.88, 0.96, 1],
+        sep: [1, 1.09, 1.03, 1],
+        dy: [0, 0.045, 0, 0],
+        gx: [0, s * 0.16, s * 0.04, 0],
+        gy: [0, i === 2 ? 0.28 : 0.12, 0.04, 0]
+      };
+    }),
+    grumpy: baue("no", 1.12, 3, (i) => {
+      const s = i === 1 ? -1 : 1;
+      return {
+        lidT: [0, 0.18, 0.32, 0.14],
+        lidA: [0, -12, -18 - i, -6],
+        sy: [1, 0.84, 0.74, 0.9],
+        sx: [1, 1.05, 1.1, 1.02],
+        gx: [0, s * 0.26, -s * 0.16, 0],
+        scale: [1, 0.98, 0.97, 1]
+      };
+    }),
+    content: baue("content", 1.45, 3, (i) => ({
+      happy: [0, 0.28, 0.48 + i * 0.04, 0.32],
+      lidT: [0, 0.04, 0.1, 0.05],
+      scale: [1, 1.02, 1.04, 1.02],
+      dy: [0, 8e-3, 0.016, 8e-3],
+      sy: [1, 0.97, 0.94, 0.98],
+      gx: [0, (i - 1) * 0.08, 0, 0]
+    }))
+  };
+
+  // web/einstell.js
+  var VOL_STUFEN = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200];
+  var LEBEN_STUFEN = [
+    { id: "still", v: 0 },
+    { id: "ruhig", v: 0.2 },
+    { id: "normal", v: 0.42 },
+    { id: "munter", v: 0.7 },
+    { id: "wach", v: 1 }
+  ];
+  var SCHLAF_MIN = [0, 5, 15, 30, 60];
+  var DIM_SEK = [0, 30, 60, 120, 300];
+  var DIM_PROZENT = [10, 20, 30, 50, 80];
+  function schnapp(wert, stufen) {
+    const liste2 = stufen || [];
+    if (!liste2.length) return 0;
+    let best = liste2[0];
+    let dist = Math.abs((Number(wert) || 0) - best);
+    for (let i = 1; i < liste2.length; i++) {
+      const d = Math.abs((Number(wert) || 0) - liste2[i]);
+      if (d < dist) {
+        dist = d;
+        best = liste2[i];
+      }
+    }
+    return best;
+  }
+  function hauptSichtbar(zentral, demoGesperrt) {
+    const liste2 = zentral || [];
+    const hat = (key) => liste2.indexOf(key) >= 0;
+    const dimNach = !hat("dimNachSekunden");
+    const dimStufe = !hat("dimStufe");
+    return {
+      schlaf: !hat("schlafSekunden"),
+      dimNach,
+      dimStufe,
+      dim: dimNach || dimStufe,
+      sprache: !hat("lang"),
+      laut: !hat("lautstaerke"),
+      leben: !hat("lebendigkeit"),
+      uhr: !hat("uhr"),
+      demo: true,
+      verbindung: !demoGesperrt && (!hat("haUrl") || !hat("haToken")),
+      haUrl: !demoGesperrt && !hat("haUrl"),
+      haToken: !demoGesperrt && !hat("haToken")
+    };
+  }
 
   // web/settings.js
   var q = new URLSearchParams(location.search);
@@ -1400,13 +1849,12 @@
     height: window.innerHeight,
     touch: navigator.maxTouchPoints > 0 || window.matchMedia("(pointer: coarse)").matches
   }));
-  var konfig = ladeKonfig(q, void 0, null, location);
-  if (istDemoHost(location.hostname)) {
-    konfig.haToken = "";
-    vergissToken();
-  }
-  var locale = resolveLocale({ query: q.get("lang"), stored: konfig.lang, nav: navigator.language });
-  var gesperrt = demoSperre(location.hostname);
+  var konfig = null;
+  var locale = "en";
+  var gesperrt = false;
+  var sicht = null;
+  var steuer = {};
+  var tokenLoeschen = false;
   function el(id) {
     return document.getElementById(id);
   }
@@ -1425,72 +1873,209 @@
     document.documentElement.lang = locale;
     document.title = t("settings.title");
   }
-  function setWert(id, wert) {
+  function zeige(id, an) {
     const node = el(id);
-    if (node) node.value = wert == null ? "" : String(wert);
+    if (!node) return;
+    if (an) node.removeAttribute("hidden");
+    else node.setAttribute("hidden", "");
   }
-  function lies(id) {
-    const node = el(id);
-    return node ? String(node.value || "").trim() : "";
+  function minutenText(min) {
+    if (!min) return t("settings.never");
+    return min + " min";
+  }
+  function dimText(sek) {
+    if (!sek) return t("settings.never");
+    if (sek < 60) return sek + " s";
+    return Math.round(sek / 60) + " min";
+  }
+  function baueWahl(id, punkte, aktuell) {
+    const box = el(id);
+    if (!box) return { wert: function() {
+      return aktuell;
+    } };
+    const werte = [];
+    for (let i = 0; i < punkte.length; i++) werte.push(punkte[i].wert);
+    let gewaehlt = schnapp(aktuell, werte);
+    box.innerHTML = "";
+    function malen() {
+      const knoepfe2 = box.getElementsByTagName("button");
+      const marke = String(gewaehlt);
+      for (let i = 0; i < knoepfe2.length; i++) {
+        knoepfe2[i].className = "wahl-knopf" + (knoepfe2[i].getAttribute("data-wert") === marke ? " an" : "");
+      }
+    }
+    for (let i = 0; i < punkte.length; i++) {
+      const knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "wahl-knopf";
+      knopf.setAttribute("data-wert", String(punkte[i].wert));
+      knopf.textContent = punkte[i].text;
+      knopf.addEventListener("click", function() {
+        gewaehlt = Number(this.getAttribute("data-wert"));
+        malen();
+      });
+      box.appendChild(knopf);
+    }
+    malen();
+    return { wert: function() {
+      return gewaehlt;
+    } };
+  }
+  function baueSchieber(id, stufen, aktuell, ziel) {
+    const wurzel = el(id);
+    if (!wurzel) return { wert: function() {
+      return aktuell;
+    } };
+    const leiste = wurzel.getElementsByClassName("schieber-leiste")[0];
+    const fuellung = wurzel.getElementsByClassName("schieber-fuellung")[0];
+    const knopf = wurzel.getElementsByClassName("schieber-knopf")[0];
+    const anzeige = el(ziel);
+    let index = 0;
+    const start = schnapp(aktuell, stufen);
+    for (let i = 0; i < stufen.length; i++) if (stufen[i] === start) index = i;
+    function male() {
+      const u = stufen.length < 2 ? 0 : index / (stufen.length - 1);
+      if (fuellung) fuellung.style.width = u * 100 + "%";
+      if (knopf) knopf.style.left = u * 100 + "%";
+      if (anzeige) anzeige.textContent = stufen[index] + " %";
+    }
+    function vonX(clientX) {
+      const rect = leiste.getBoundingClientRect();
+      const breite = rect.width || 1;
+      let u = (clientX - rect.left) / breite;
+      if (u < 0) u = 0;
+      if (u > 1) u = 1;
+      index = Math.round(u * (stufen.length - 1));
+      male();
+    }
+    function xVon(e) {
+      if (e.touches && e.touches[0]) return e.touches[0].clientX;
+      if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientX;
+      return e.clientX;
+    }
+    let zieh = false;
+    leiste.addEventListener("touchstart", function(e) {
+      zieh = true;
+      vonX(xVon(e));
+      if (e.preventDefault) e.preventDefault();
+    });
+    leiste.addEventListener("touchmove", function(e) {
+      if (!zieh) return;
+      vonX(xVon(e));
+      if (e.preventDefault) e.preventDefault();
+    });
+    leiste.addEventListener("touchend", function() {
+      zieh = false;
+    });
+    leiste.addEventListener("mousedown", function(e) {
+      zieh = true;
+      vonX(e.clientX);
+    });
+    window.addEventListener("mousemove", function(e) {
+      if (!zieh) return;
+      vonX(e.clientX);
+    });
+    window.addEventListener("mouseup", function() {
+      zieh = false;
+    });
+    male();
+    return { wert: function() {
+      return stufen[index];
+    } };
+  }
+  function baueSchalter(id, an) {
+    const knopf = el(id);
+    if (!knopf) return { wert: function() {
+      return !!an;
+    } };
+    let ein = !!an;
+    function male() {
+      knopf.className = ein ? "schalter an" : "schalter";
+      knopf.setAttribute("aria-pressed", ein ? "true" : "false");
+    }
+    knopf.addEventListener("click", function() {
+      ein = !ein;
+      male();
+    });
+    male();
+    return { wert: function() {
+      return ein;
+    } };
   }
   function fuellen() {
-    var _a, _b;
-    setWert("ha-url", konfig.haUrl || "");
-    setWert("ha-token", "");
-    setWert("ha-entity", konfig.haEntity || "");
-    setWert("tuer-entity", konfig.tuer || "");
-    setWert("presence-entity", konfig.presenceEntity || "");
-    setWert("reminder-entity", konfig.reminderEntity || "");
-    setWert("reminder-ack", konfig.reminderAckScript || "");
-    setWert("schlaf-min", String(Math.round((konfig.schlafSekunden || 0) / 60)));
-    setWert("dim-nach", String((_a = konfig.dimNachSekunden) != null ? _a : 60));
-    setWert("dim-stufe", String(Math.round(((_b = konfig.dimStufe) != null ? _b : 0.3) * 100)));
-    const ton = el("ton");
-    if (ton) ton.checked = !!konfig.ton;
-    const uhr = el("uhr-an");
-    if (uhr) uhr.checked = !!konfig.uhr;
-    const demo = el("demo-an");
-    if (demo) demo.checked = !!konfig.demo;
-    const alarm = el("alarm-staerke");
-    if (alarm) alarm.value = konfig.alarmStaerke === "normal" ? "normal" : "stark";
-    const sprache = el("sprache");
-    if (sprache) sprache.value = konfig.lang || "auto";
-    const token = el("ha-token");
-    if (token) token.placeholder = konfig.haToken ? t("ph.tokenReplace") : t("ph.tokenEmpty");
+    sicht = hauptSichtbar(konfig.zentral, gesperrt);
+    zeige("feld-schlaf", sicht.schlaf);
+    zeige("feld-dim", sicht.dim);
+    zeige("feld-dim-nach", sicht.dimNach);
+    zeige("feld-dim-stufe", sicht.dimStufe);
+    zeige("feld-sprache", sicht.sprache);
+    zeige("feld-laut", sicht.laut);
+    zeige("feld-leben", sicht.leben);
+    zeige("feld-uhr", sicht.uhr);
+    zeige("feld-demo", sicht.demo);
+    zeige("feld-verbindung", sicht.verbindung);
+    zeige("feld-url", sicht.haUrl);
+    zeige("feld-token", sicht.haToken);
     const fehler = el("form-fehler");
     if (fehler) fehler.textContent = "";
-    const ids = ["ha-url", "ha-token", "ha-entity", "tuer-entity", "presence-entity", "reminder-entity", "reminder-ack"];
-    for (let i = 0; i < ids.length; i++) {
-      const node = el(ids[i]);
-      if (node) node.readOnly = gesperrt;
+    const url = el("ha-url");
+    if (url) url.value = konfig.haUrl || "";
+    const token = el("ha-token");
+    if (token) {
+      token.value = "";
+      token.placeholder = konfig.haToken ? t("ph.tokenReplace") : t("ph.tokenEmpty");
     }
-    const note = el("demo-sperre");
-    if (note) {
-      note.hidden = !gesperrt;
-      note.textContent = gesperrt ? t("demo.locked") : "";
+    const schlafPunkte = [];
+    for (let i = 0; i < SCHLAF_MIN.length; i++) schlafPunkte.push({ wert: SCHLAF_MIN[i], text: minutenText(SCHLAF_MIN[i]) });
+    const dimSek = [];
+    for (let i = 0; i < DIM_SEK.length; i++) dimSek.push({ wert: DIM_SEK[i], text: dimText(DIM_SEK[i]) });
+    const dimProzent = [];
+    for (let i = 0; i < DIM_PROZENT.length; i++) dimProzent.push({ wert: DIM_PROZENT[i], text: DIM_PROZENT[i] + " %" });
+    const sprachen = [
+      { wert: 0, text: "Auto", lang: "" },
+      { wert: 1, text: "Deutsch", lang: "de" },
+      { wert: 2, text: "English", lang: "en" }
+    ];
+    const spracheJetzt = konfig.lang === "de" ? 1 : konfig.lang === "en" ? 2 : 0;
+    const lebenPunkte = [];
+    for (let i = 0; i < LEBEN_STUFEN.length; i++) {
+      lebenPunkte.push({ wert: LEBEN_STUFEN[i].v, text: t("live." + LEBEN_STUFEN[i].id) });
     }
+    steuer = {
+      schlaf: baueWahl("schlaf-min", schlafPunkte, Math.round((konfig.schlafSekunden || 0) / 60)),
+      dimNach: baueWahl("dim-nach", dimSek, konfig.dimNachSekunden == null ? 60 : konfig.dimNachSekunden),
+      dimStufe: baueWahl("dim-stufe", dimProzent, Math.round((konfig.dimStufe == null ? 0.3 : konfig.dimStufe) * 100)),
+      sprache: baueWahl("sprache", sprachen, spracheJetzt),
+      laut: baueSchieber("lautstaerke", VOL_STUFEN, Math.round((konfig.lautstaerke == null ? 1.6 : konfig.lautstaerke) * 100), "laut-wert"),
+      leben: baueWahl("lebendigkeit", lebenPunkte, konfig.lebendigkeit == null ? 0.42 : konfig.lebendigkeit),
+      uhr: baueSchalter("uhr-an", !!konfig.uhr)
+    };
+    steuer.sprachen = sprachen;
   }
   function melden(key) {
     const node = el("form-fehler");
     if (node) node.textContent = t(key);
   }
-  function uebernehmen(k) {
-    k.schlafSekunden = Math.max(0, Math.round(Number(lies("schlaf-min")) * 60) || 0);
-    k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(Number(lies("dim-nach"))) || 0));
-    k.dimStufe = Math.max(0.05, Math.min(1, (Math.round(Number(lies("dim-stufe"))) || 30) / 100));
-    k.ton = !!(el("ton") && el("ton").checked);
-    k.uhr = !!(el("uhr-an") && el("uhr-an").checked);
-    k.demo = !!(el("demo-an") && el("demo-an").checked);
-    const gewaehlt = lies("sprache");
-    k.lang = gewaehlt === "auto" ? "" : gewaehlt;
-    k.alarmStaerke = lies("alarm-staerke") === "normal" ? "normal" : "stark";
+  function schliessen() {
+    location.href = "index.html";
   }
   function speichern(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
     const k = __spreadValues({}, konfig);
-    const loeschen = !!(el("token-loeschen") && el("token-loeschen").checked);
-    if (!gesperrt) {
-      const urlRoh = lies("ha-url");
+    if (sicht.schlaf) k.schlafSekunden = Math.max(0, Math.round(steuer.schlaf.wert() * 60) || 0);
+    if (sicht.dimNach) k.dimNachSekunden = Math.max(0, Math.min(3600, Math.round(steuer.dimNach.wert()) || 0));
+    if (sicht.dimStufe) k.dimStufe = Math.max(0.05, Math.min(1, steuer.dimStufe.wert() / 100));
+    if (sicht.laut) k.lautstaerke = Math.max(0, Math.min(2, steuer.laut.wert() / 100));
+    if (sicht.leben) k.lebendigkeit = Math.max(0, Math.min(1, steuer.leben.wert()));
+    if (sicht.uhr) k.uhr = !!steuer.uhr.wert();
+    if (sicht.sprache) {
+      const gewaehlt = steuer.sprache.wert();
+      let lang = "";
+      for (let i = 0; i < steuer.sprachen.length; i++) if (steuer.sprachen[i].wert === gewaehlt) lang = steuer.sprachen[i].lang;
+      k.lang = lang;
+    }
+    if (sicht.haUrl) {
+      const urlRoh = el("ha-url") ? String(el("ha-url").value || "").trim() : "";
       if (urlRoh) {
         const url = normalisiereHaUrl(urlRoh);
         if (!url) {
@@ -1499,37 +2084,73 @@
         }
         k.haUrl = url;
       } else k.haUrl = "";
-      const token = lies("ha-token");
-      if (loeschen) k.haToken = "";
-      else if (token) k.haToken = token;
-      const felder = [
-        ["ha-entity", "haEntity"],
-        ["tuer-entity", "tuer"],
-        ["presence-entity", "presenceEntity"],
-        ["reminder-entity", "reminderEntity"]
-      ];
-      for (let i = 0; i < felder.length; i++) {
-        const wert = lies(felder[i][0]).toLowerCase();
-        if (wert && !gueltigeEntity(wert)) {
-          melden("err.entity");
-          return;
-        }
-        k[felder[i][1]] = wert;
-      }
-      const ack = lies("reminder-ack").toLowerCase();
-      if (ack && !dienstAus(ack)) {
-        melden("err.entity");
-        return;
-      }
-      k.reminderAckScript = ack;
     }
-    uebernehmen(k);
-    speichereKonfig(k, void 0, { tokenLoeschen: !gesperrt && loeschen });
+    if (sicht.haToken) {
+      const token = el("ha-token") ? String(el("ha-token").value || "").trim() : "";
+      if (tokenLoeschen) k.haToken = "";
+      else if (token) k.haToken = token;
+    }
+    speichereKonfig(k, void 0, { tokenLoeschen: sicht.haToken && tokenLoeschen });
     if (gesperrt) vergissToken();
     location.href = "index.html";
   }
-  applyI18n();
-  fuellen();
-  var form = el("form");
-  if (form) form.addEventListener("submit", speichern);
+  function starten() {
+    return __async(this, null, function* () {
+      const datei = yield ladeSiteConfig();
+      konfig = ladeKonfig(q, void 0, datei, location);
+      if (istDemoHost(location.hostname)) {
+        konfig.haToken = "";
+        vergissToken();
+      }
+      locale = resolveLocale({ query: q.get("lang"), stored: konfig.lang, nav: navigator.language });
+      gesperrt = demoSperre(location.hostname);
+      applyI18n();
+      fuellen();
+      baueVorschau();
+      const form = el("form");
+      if (form) form.addEventListener("submit", speichern);
+      const zu = el("schliessen");
+      if (zu) zu.addEventListener("click", schliessen);
+      const demo = el("demo-start");
+      if (demo) demo.addEventListener("click", function() {
+        location.href = "index.html?lauf=1";
+      });
+      const verbinden = el("verbindung");
+      if (verbinden) verbinden.addEventListener("click", function() {
+        const kasten = el("verbindung-kasten");
+        if (!kasten) return;
+        if (kasten.hasAttribute("hidden")) kasten.removeAttribute("hidden");
+        else kasten.setAttribute("hidden", "");
+      });
+      const vergiss = el("token-loeschen");
+      if (vergiss) vergiss.addEventListener("click", function() {
+        tokenLoeschen = true;
+        const token = el("ha-token");
+        if (token) token.value = "";
+        vergiss.disabled = true;
+      });
+      const klingelTest = el("klingel-test");
+      if (klingelTest) klingelTest.addEventListener("click", function() {
+        location.href = "index.html?klingel=1";
+      });
+    });
+  }
+  starten();
+  function baueVorschau() {
+    const box = el("preview-list");
+    const details = el("preview-reactions");
+    if (!box) return;
+    if (q.get("preview") === "1" && details) details.open = true;
+    for (let i = 0; i < REAKTION_IDS.length; i++) {
+      const id = REAKTION_IDS[i];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "preview-btn";
+      button.textContent = id;
+      button.addEventListener("click", function() {
+        location.href = "index.html?demo=0&reaction=" + encodeURIComponent(id);
+      });
+      box.appendChild(button);
+    }
+  }
 })();
